@@ -32,6 +32,7 @@ input:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
 .row{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
 .btn{padding:9px 14px;border:1px solid var(--line);border-radius:8px;background:var(--chip);color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.danger{border-color:var(--bad);color:var(--bad)}
 .btn.sm{padding:5px 9px;font-size:13px}
 .results{border:1px solid var(--line);border-radius:8px;margin-top:6px;max-height:280px;overflow:auto;background:var(--surface)}
 .res{display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border-bottom:1px solid var(--line);cursor:pointer}
@@ -68,11 +69,24 @@ details summary{cursor:pointer;font-weight:600}
 .hrec summary{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;font-weight:500}
 .hrec .in{padding:0 12px 12px}
 .hrec .in p{margin:6px 0}
+.hactions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .err{color:var(--bad);font-size:13px;min-height:18px;margin:8px 0 0}
 #map{height:300px;border:1px solid var(--line);border-radius:8px;margin-top:8px;z-index:0}
+.dist{margin:8px 0 0;padding:8px 10px;border-radius:8px;background:var(--chip);font-weight:600}
+.storepin{width:30px;height:30px;display:grid;place-items:center;font-size:17px;background:#fff;border:2px solid #d4540a;border-radius:50%;box-shadow:0 1px 6px rgba(0,0,0,.35)}
 .btnstack{display:grid;gap:8px;margin-bottom:14px}
+.editbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:12px;padding:10px 12px;border:1px solid var(--accent);border-radius:8px;background:rgba(212,84,10,.12);font-size:14px}
+.editbar.hide{display:none}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:99px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .25s;z-index:9999;max-width:90vw;text-align:center}
 #toast.show{opacity:1}
+
+/* ---------- history stats ---------- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:12px}
+.stat{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px}
+.stat .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.stat .v{font-size:23px;font-weight:700;margin-top:2px}
+.stat .s{font-size:12px;color:var(--muted)}
+.stat.refund .v{color:var(--bad)}
 
 /* ---------- active orders ---------- */
 .agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:20px;align-items:start}
@@ -129,7 +143,7 @@ details summary{cursor:pointer;font-weight:600}
 <div id="intro" role="presentation">
   <div class="intro-box">
     <svg class="beam" viewBox="0 0 120 120" width="120" height="120" aria-hidden="true">
-      <path pathLength="1" d="M20 24H100V40H68V80H100V96H20V80H52V40H20Z"/>
+      <path pathLength="1" d="M32 22H94V40H52V54H86V71H52V98H32Z"/>
     </svg>
     <div class="sparks" aria-hidden="true">
       <i style="--dx:-60px;--dy:-46px"></i><i style="--dx:-34px;--dy:-70px"></i><i style="--dx:8px;--dy:-78px"></i>
@@ -216,6 +230,7 @@ details summary{cursor:pointer;font-weight:600}
           <span id="pinTxt">No pin yet. Tap the map to drop a pin (you can drag it to adjust).</span>
           <button class="btn sm hide" id="pinClear" type="button" style="margin-left:6px">Remove pin</button>
         </p>
+        <p class="dist" id="distTxt">Pin a location to see the road distance from our store.</p>
         <p class="muted" id="mapmsg" style="margin:4px 0 0"></p>
       </div>
     </div>
@@ -268,9 +283,13 @@ details summary{cursor:pointer;font-weight:600}
   <div>
     <div class="card printable">
       <div class="noprint">
+        <div class="editbar hide" id="editBar">
+          <span>✏️ Editing <b id="editNo"></b>. Saving overwrites the saved receipt.</span>
+          <button class="btn sm" id="editCancel" type="button">Cancel edit</button>
+        </div>
         <div class="btnstack">
-          <button class="btn primary" id="saveOnly"> Save to history (no print)</button>
-          <button class="btn primary" id="savePrint"> Save to history + Print / Save PDF</button>
+          <button class="btn primary" id="saveOnly">💾 Save to history (no print)</button>
+          <button class="btn primary" id="savePrint">🖨️ Save to history + Print / Save PDF</button>
           <button class="btn" id="newr">New receipt (discard)</button>
         </div>
         <p class="err" id="saveMsg"></p>
@@ -326,6 +345,12 @@ details summary{cursor:pointer;font-weight:600}
       <button class="btn" id="hcsv">Export CSV</button>
       <button class="btn" id="hlockbtn">Lock</button>
     </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+      <input id="hday" type="date" style="width:auto" aria-label="Day">
+      <button class="chip" id="hToday" type="button">Today</button>
+      <button class="chip" id="hAllBtn" type="button">All days</button>
+    </div>
+    <div class="stats" id="hstats"></div>
     <p class="muted" id="hsum"></p>
     <div id="hlist"></div>
   </div>
@@ -359,6 +384,9 @@ const search = (q, list) => {
   return list.filter(p => { const h = (label(p)+' '+p.c+' '+loc(p)).toLowerCase(); return t.every(x=>h.includes(x)); });
 };
 
+/* Our store (from your Google Maps link). Road distance is measured from here. */
+const STORE = {name:'Ferro Steel Trading', lat:15.3199505, lng:120.5853324};
+
 /* Pick-up now = handed over right away, so it is marked done automatically.
    Set to false if you also want "Pick-up now" receipts to appear in Active Orders. */
 const AUTO_COMPLETE_NOW = true;
@@ -366,9 +394,12 @@ const AUTO_COMPLETE_NOW = true;
 /* ---------- helpers: dates, toast ---------- */
 const pad = n => String(n).padStart(2,'0');
 const toLocalInput = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+const dayKey = d => toLocalInput(d).slice(0,10);
+const todayKey = () => dayKey(new Date());
 const fmtDT = d => d.toLocaleDateString('en-PH')+' '+d.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'});
 const parseDT = v => { if(!v) return null; const d = new Date(v); return isNaN(d) ? null : d; };
 const rn = n => 'OR-'+String(n).padStart(6,'0');
+const fmtMin = m => m>=60 ? Math.floor(m/60)+' h '+(m%60)+' min' : m+' min';
 const MODES = {now:'Pick-up now', later:'Pick-up later', delivery:'Delivery'};
 const mapLink = p => 'https://www.google.com/maps?q='+p.lat+','+p.lng;
 let toastTimer;
@@ -387,7 +418,7 @@ function showTab(t){
   if(t!=='history') lockHistory();
   if(t==='active') renderActive();
   if(t==='finder') renderFinder();
-  if(t==='history') renderHistory();
+  if(t==='history'){ if(!hCustom && !hAll) $('#hday').value = todayKey(); renderHistory(); }
   if(t==='receipt' && map) setTimeout(()=>map.invalidateSize(),50);
 }
 TABS.forEach(n=>{ $('#tab-'+n).onclick = ()=>showTab(n); });
@@ -397,7 +428,8 @@ let dtAuto = true;          // true = receipt uses the current time
 let mode = 'now';           // 'now' | 'later' | 'delivery'
 let pin = null;             // {lat,lng}
 let map = null, marker = null;
-const DEFAULT_CENTER = [15.29, 120.57]; // change to your store's location if you like
+let editNo = null;          // receipt number being edited (null = new receipt)
+const curNo = () => editNo!==null ? editNo : rno;
 
 function getReceiptDate(){
   if(dtAuto) return new Date();
@@ -430,20 +462,75 @@ function setMode(m){
 $('#modes').addEventListener('click', e=>{ const b=e.target.closest('[data-mode]'); if(b) setMode(b.dataset.mode); });
 ['when','dAddr','notes'].forEach(id=>$('#'+id).addEventListener('input', renderPaper));
 
-/* ---------- map (Leaflet + OpenStreetMap) ---------- */
+/* ---------- map (Leaflet + OpenStreetMap) + road distance (OSRM) ---------- */
+let route = null;           // {km, min, approx}
+let routeLayer = null, routeTimer = null, routeSeq = 0;
+
 function initMap(){
   if(map) return;
   if(typeof L==='undefined'){ $('#mapmsg').textContent = 'The map could not load. Check the internet connection and refresh.'; return; }
   const base = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/';
   L.Icon.Default.mergeOptions({iconUrl:base+'marker-icon.png', iconRetinaUrl:base+'marker-icon-2x.png', shadowUrl:base+'marker-shadow.png'});
-  map = L.map('map').setView(pin ? [pin.lat,pin.lng] : DEFAULT_CENTER, pin ? 17 : 14);
+  map = L.map('map').setView(pin ? [pin.lat,pin.lng] : [STORE.lat,STORE.lng], pin ? 17 : 14);
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap contributors'}).addTo(map);
+  L.marker([STORE.lat,STORE.lng], {icon:L.divIcon({className:'', html:'<div class="storepin">🏪</div>', iconSize:[30,30], iconAnchor:[15,15]}), zIndexOffset:500})
+    .addTo(map).bindTooltip(STORE.name+' (our store)');
   map.on('click', e=>setPin(e.latlng.lat, e.latlng.lng));
   if(pin) setPin(pin.lat, pin.lng);
 }
 function updatePinUi(){
   $('#pinTxt').textContent = pin ? 'Pinned: '+pin.lat.toFixed(5)+', '+pin.lng.toFixed(5) : 'No pin yet. Tap the map to drop a pin (you can drag it to adjust).';
   $('#pinClear').classList.toggle('hide', !pin);
+}
+function updateDistUi(){
+  const el = $('#distTxt');
+  if(!pin){ el.textContent = 'Pin a location to see the road distance from our store.'; return; }
+  if(!route){ el.textContent = 'Calculating road distance…'; return; }
+  el.textContent = route.approx
+    ? '⚠️ Road route unavailable right now. Straight-line distance: '+route.km.toFixed(1)+' km'
+    : '🚚 '+route.km.toFixed(1)+' km by road from our store · about '+fmtMin(route.min)+' drive';
+}
+const rad = x => x*Math.PI/180;
+function haversineKm(a,b){
+  const R = 6371, dLat = rad(b.lat-a.lat), dLng = rad(b.lng-a.lng);
+  const h = Math.sin(dLat/2)**2 + Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+function clearRouteLayer(){ if(map && routeLayer) map.removeLayer(routeLayer); routeLayer = null; }
+function drawRoute(geom){
+  clearRouteLayer();
+  if(!map || !pin) return;
+  routeLayer = geom
+    ? L.geoJSON(geom, {style:{color:'#d4540a', weight:5, opacity:.85}})
+    : L.polyline([[STORE.lat,STORE.lng],[pin.lat,pin.lng]], {color:'#d4540a', weight:3, dashArray:'6 8'});
+  routeLayer.addTo(map);
+  const b = routeLayer.getBounds();
+  if(!map.getBounds().contains(b)) map.fitBounds(b, {padding:[30,30]});
+}
+function scheduleRoute(){
+  clearTimeout(routeTimer); routeSeq++; route = null;
+  if(!pin){ clearRouteLayer(); updateDistUi(); return; }
+  updateDistUi();
+  routeTimer = setTimeout(calcRoute, 350);
+}
+async function calcRoute(){
+  if(!pin) return;
+  const my = routeSeq, p = {lat:pin.lat, lng:pin.lng};
+  try{
+    const url = 'https://router.project-osrm.org/route/v1/driving/'+STORE.lng+','+STORE.lat+';'+p.lng+','+p.lat+'?overview=full&geometries=geojson';
+    const r = await fetch(url);
+    const j = await r.json();
+    if(my!==routeSeq) return;
+    if(j.code!=='Ok' || !j.routes || !j.routes.length) throw new Error('no route');
+    const rt = j.routes[0];
+    route = {km:+(rt.distance/1000).toFixed(2), min:Math.round(rt.duration/60), approx:false};
+    drawRoute(rt.geometry);
+  }catch(e){
+    if(my!==routeSeq) return;
+    route = {km:+haversineKm(STORE,p).toFixed(2), min:0, approx:true};
+    drawRoute(null);
+  }
+  updateDistUi(); renderPaper();
 }
 function setPin(lat, lng, zoom){
   pin = {lat:+(+lat).toFixed(6), lng:+(+lng).toFixed(6)};
@@ -454,12 +541,12 @@ function setPin(lat, lng, zoom){
     } else marker.setLatLng([pin.lat,pin.lng]);
     if(zoom) map.setView([pin.lat,pin.lng], 17);
   }
-  updatePinUi(); renderPaper();
+  updatePinUi(); scheduleRoute(); renderPaper();
 }
 function clearPin(){
   pin = null;
   if(map && marker){ map.removeLayer(marker); marker = null; }
-  updatePinUi(); renderPaper();
+  updatePinUi(); scheduleRoute(); renderPaper();
 }
 $('#pinClear').onclick = clearPin;
 async function mapSearch(){
@@ -491,7 +578,7 @@ function addItem(p){
   if(ex) ex.qty += 1; else items.push({k:pkey(p), name:label(p), price:p.p, qty:1});
   persist(); renderLines(); renderPaper();
 }
-function persist(){ ls.set('draft', items); }
+function persist(){ if(editNo===null) ls.set('draft', items); }   // don't overwrite the saved draft while editing
 function renderLines(){
   $('#empty').classList.toggle('hide', items.length>0);
   $('#lines').innerHTML = items.map((it,i)=>`<tr>
@@ -523,14 +610,15 @@ function draftRecord(){
   const t = totals();
   const when = mode==='now' ? null : parseDT($('#when').value);
   return {
-    no:rno, date:getReceiptDate().toISOString(),
+    no:curNo(), date:getReceiptDate().toISOString(),
     customer:$('#cName').value.trim()||'Walk-in', addr:$('#cAddr').value.trim(),
-    items:items.map(i=>({name:i.name,qty:i.qty,price:i.price})),
+    items:items.map(i=>({k:i.k,name:i.name,qty:i.qty,price:i.price})),
     sub:t.sub, disc:t.disc, total:t.total, cash:t.cash,
     notes:$('#notes').value.trim(),
     mode:mode, when:when?when.toISOString():'',
     dAddr:mode==='delivery'?$('#dAddr').value.trim():'',
-    pin:mode==='delivery'?pin:null
+    pin:mode==='delivery'?pin:null,
+    dist:(mode==='delivery' && pin && route) ? {km:route.km, min:route.min, approx:route.approx} : null
   };
 }
 
@@ -550,6 +638,7 @@ function receiptHTML(r){
     ${m!=='now'&&when?`<div class="ln"><span>${whenLabel}</span><span>${fmtDT(when)}</span></div>`:''}
     ${m==='delivery'&&r.dAddr?`<div class="ln"><span>Deliver to</span><span>${esc(r.dAddr)}</span></div>`:''}
     ${m==='delivery'&&r.pin?`<div class="ln"><span>Map pin</span><span><a href="${mapLink(r.pin)}" target="_blank" rel="noopener">${r.pin.lat.toFixed(5)}, ${r.pin.lng.toFixed(5)}</a></span></div>`:''}
+    ${m==='delivery'&&r.dist?`<div class="ln"><span>Distance</span><span>${r.dist.km.toFixed(1)} km ${r.dist.approx?'(straight-line)':'by road'}</span></div>`:''}
     <hr>
     ${r.items.length ? r.items.map(i=>`<div class="it">${esc(i.name)}<div class="ln"><span>${i.qty} × ${peso(i.price)}</span><span>${peso(i.qty*i.price)}</span></div></div>`).join('') : '<div class="c">— no items —</div>'}
     <hr>
@@ -609,15 +698,52 @@ function newReceipt(){
   rno++; ls.set('rno',rno); items=[]; persist();
   resetForm(); renderLines(); renderPaper();
 }
+function updateEditUi(){
+  const e = editNo!==null;
+  $('#editBar').classList.toggle('hide', !e);
+  if(e) $('#editNo').textContent = rn(editNo);
+  $('#saveOnly').textContent = e ? '💾 Save changes (no print)' : '💾 Save to history (no print)';
+  $('#savePrint').textContent = e ? '🖨️ Save changes + Print / Save PDF' : '🖨️ Save to history + Print / Save PDF';
+  $('#newr').classList.toggle('hide', e);
+}
+function endEdit(){
+  editNo = null; items = ls.get('draft', []);   // bring back the draft that was saved before editing
+  resetForm(); renderLines(); renderPaper(); updateEditUi();
+}
+function startEdit(h){
+  if(!h || h.refunded) return;
+  const warn = (editNo===null && (items.length || $('#cName').value.trim() || $('#notes').value.trim()))
+    ? '\n\nWhatever you are typing on the Make Receipt page right now will be replaced.' : '';
+  if(!confirm('Edit '+rn(h.no)+' ('+h.customer+')?'+warn)) return;
+  editNo = h.no;
+  items = h.items.map((i,n)=>({k:i.k||('edit|'+n), name:i.name, price:i.price, qty:i.qty}));
+  $('#cName').value = h.customer==='Walk-in' ? '' : h.customer;
+  $('#cAddr').value = h.addr||'';
+  $('#disc').value = h.disc||0;
+  $('#cash').value = h.cash||'';
+  $('#notes').value = h.notes||'';
+  $('#dAddr').value = h.dAddr||'';
+  $('#when').value = h.when ? toLocalInput(new Date(h.when)) : '';
+  $('#mapq').value = ''; $('#mapmsg').textContent = '';
+  dtAuto = false; $('#dt').value = toLocalInput(new Date(h.date)); updateDtHint();
+  clearPin();
+  setMode(h.mode||'now');
+  if(h.pin) setPin(h.pin.lat, h.pin.lng, true);
+  $('#saveMsg').textContent = '';
+  renderLines(); renderPaper(); updateEditUi();
+  showTab('receipt'); window.scrollTo(0,0);
+}
 function finish(print){
   const msg = validateReceipt();
   $('#saveMsg').textContent = msg;
   if(msg) return;
+  const wasEdit = editNo!==null;
+  if(wasEdit && !confirm('Save changes to '+rn(editNo)+'? This overwrites the saved receipt.')) return;
   const no = saveReceipt();
-  const goesActive = receipts.find(h=>h.no===no).status==='active';
+  const goesActive = isActive(receipts.find(h=>h.no===no));
   const after = ()=>{
-    newReceipt();
-    toast(rn(no)+' saved to history'+(goesActive?' · added to Active Orders':''));
+    if(wasEdit) endEdit(); else newReceipt();
+    toast(wasEdit ? rn(no)+' updated' : rn(no)+' saved to history'+(goesActive?' · added to Active Orders':''));
   };
   if(print){
     const done = ()=>{ window.removeEventListener('afterprint', done); after(); };
@@ -631,6 +757,11 @@ $('#newr').onclick = ()=>{
   if(items.length && !confirm('Clear this receipt without saving it to history?')) return;
   $('#saveMsg').textContent = '';
   newReceipt();
+};
+$('#editCancel').onclick = ()=>{
+  if(!confirm('Cancel editing '+rn(editNo)+'? Your changes will be lost.')) return;
+  $('#saveMsg').textContent = '';
+  endEdit();
 };
 
 /* ---------- finder ---------- */
@@ -685,17 +816,25 @@ let receipts = ls.get('receipts', []).map(h=>{
 });
 ls.set('receipts', receipts);
 let unlocked = false;
+let hAll = false, hCustom = false;   // history day filter: all days / custom date picked
 
-const isActive = h => h.status==='active';
+const isActive = h => h.status==='active' && !h.refunded;
 const doneWord = h => (h.mode==='delivery' ? 'Delivered' : 'Picked up');
-const statusText = h => isActive(h) ? 'Active' : doneWord(h);
+const statusText = h => h.refunded ? 'Refunded' : (h.status==='active' ? 'Active' : doneWord(h));
 const haystack = h => (rn(h.no)+' '+h.customer+' '+(h.addr||'')+' '+(h.dAddr||'')+' '+(h.notes||'')+' '+MODES[h.mode||'now']+' '+statusText(h)+' '+h.items.map(i=>i.name).join(' ')).toLowerCase();
 
 function saveReceipt(){
-  const rec = draftRecord();
-  const idx = receipts.findIndex(h=>h.no===rno);
-  if(idx>=0 && receipts[idx].status){
-    rec.status = receipts[idx].status; rec.doneAt = receipts[idx].doneAt||'';   // keep progress if saved twice
+  const rec = draftRecord(), no = rec.no;
+  const idx = receipts.findIndex(h=>h.no===no);
+  const old = idx>=0 ? receipts[idx] : null;
+  if(old && editNo!==null){
+    let status = old.status||'done', doneAt = old.doneAt||'';
+    const oldM = old.mode||'now';
+    if(mode==='now' && AUTO_COMPLETE_NOW && status==='active'){ status='done'; doneAt=new Date().toISOString(); }
+    else if(mode!=='now' && oldM==='now' && status==='done'){ status='active'; doneAt=''; }
+    rec.status = status; rec.doneAt = doneAt; rec.editedAt = new Date().toISOString();
+  } else if(old && old.status){
+    rec.status = old.status; rec.doneAt = old.doneAt||'';          // saved twice (print flow): keep progress
   } else if(mode==='now' && AUTO_COMPLETE_NOW){
     rec.status = 'done'; rec.doneAt = new Date().toISOString();
   } else {
@@ -704,7 +843,7 @@ function saveReceipt(){
   if(idx>=0) receipts[idx] = rec; else receipts.push(rec);
   ls.set('receipts', receipts);
   updateActiveBadge();
-  return rno;
+  return no;
 }
 function updateActiveBadge(){
   const n = receipts.filter(isActive).length;
@@ -763,40 +902,82 @@ async function tryUnlock(){
   if(await sha256($('#hpw').value) === PW_HASH){ unlocked=true; $('#hpw').value=''; $('#hmsg').textContent=''; renderHistory(); }
   else { $('#hmsg').textContent='Wrong password.'; $('#hpw').select(); }
 }
+const statHTML = (k,v,s,cls) => `<div class="stat ${cls||''}"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
 function renderHistory(){
   $('#hlock').classList.toggle('hide', unlocked);
   $('#hbody').classList.toggle('hide', !unlocked);
   if(!unlocked) return;
+  if(!$('#hday').value) $('#hday').value = todayKey();
+  const dayVal = $('#hday').value, isToday = dayVal===todayKey();
+  $('#hToday').setAttribute('aria-pressed', !hAll && isToday);
+  $('#hAllBtn').setAttribute('aria-pressed', hAll);
+
+  /* daily totals (refunded receipts are not counted as sales/income) */
+  const inDay = receipts.filter(h=>hAll || dayKey(new Date(h.date))===dayVal);
+  const sold = inDay.filter(h=>!h.refunded), refd = inDay.filter(h=>h.refunded);
+  const income = sold.reduce((a,h)=>a+h.total,0), refAmt = refd.reduce((a,h)=>a+h.total,0);
+  const period = hAll ? 'All days' : (isToday ? 'Today · ' : '') + new Date(dayVal+'T12:00:00').toLocaleDateString('en-PH',{weekday:'short',year:'numeric',month:'short',day:'numeric'});
+  $('#hstats').innerHTML =
+    statHTML('Total income', peso(income), period) +
+    statHTML('Number of sales', sold.length, period) +
+    (refd.length ? statHTML('Refunded', peso(refAmt), refd.length+' receipt'+(refd.length===1?'':'s'), 'refund') : '');
+
   const q = $('#hq').value.toLowerCase().trim();
-  const list = receipts.filter(h=>!q || haystack(h).includes(q)).slice().reverse();
-  $('#hsum').textContent = list.length+' receipt'+(list.length===1?'':'s')+' · Total sales '+peso(list.reduce((a,h)=>a+h.total,0));
+  const list = inDay.filter(h=>!q || haystack(h).includes(q)).slice().reverse();
+  $('#hsum').textContent = list.length+' receipt'+(list.length===1?'':'s')+' shown'+(hAll?'':' for this day · use “All days” to see everything');
   $('#hlist').innerHTML = list.length ? list.map(h=>{
     const d = new Date(h.date), m = h.mode||'now';
     const w = h.when ? new Date(h.when) : null;
-    const done = !isActive(h);
-    return `<details class="hrec"><summary><span>${rn(h.no)} · ${esc(h.customer)}<span class="badge">${MODES[m]}</span><span class="badge ${done?'ok':'bad'}">${statusText(h)}</span></span><span class="muted">${fmtDT(d)}</span><b>${peso(h.total)}</b></summary>
+    const done = h.status!=='active';
+    const bad = h.refunded || !done;
+    return `<details class="hrec"><summary><span>${rn(h.no)} · ${esc(h.customer)}<span class="badge">${MODES[m]}</span><span class="badge ${bad?'bad':'ok'}">${statusText(h)}</span></span><span class="muted">${fmtDT(d)}</span><b${h.refunded?' style="text-decoration:line-through"':''}>${peso(h.total)}</b></summary>
       <div class="in">${h.addr?`<p class="muted">${esc(h.addr)}</p>`:''}
       ${w?`<p class="muted">${m==='delivery'?'Delivery needed on':'Pick-up on'}: ${fmtDT(w)}</p>`:''}
       ${h.dAddr?`<p class="muted">Deliver to: ${esc(h.dAddr)}</p>`:''}
       ${h.pin?`<p class="muted">Map pin: <a href="${mapLink(h.pin)}" target="_blank" rel="noopener">${h.pin.lat.toFixed(5)}, ${h.pin.lng.toFixed(5)} (open map)</a></p>`:''}
-      ${done
-        ? (h.doneAt?`<p><b style="color:var(--ok)">${doneWord(h)} on:</b> ${fmtDT(new Date(h.doneAt))}</p>`:`<p><b style="color:var(--ok)">${doneWord(h)}</b></p>`)
-        : `<p><b style="color:var(--bad)">Still waiting to be ${m==='delivery'?'delivered':'picked up'}.</b></p>`}
+      ${h.dist?`<p class="muted">Distance from store: ${h.dist.km.toFixed(1)} km ${h.dist.approx?'(straight-line)':'by road'}${h.dist.min?' · about '+fmtMin(h.dist.min):''}</p>`:''}
+      ${h.refunded
+        ? `<p><b style="color:var(--bad)">Refunded${h.refundedAt?' on '+fmtDT(new Date(h.refundedAt)):''}</b> · ${peso(h.total)} returned</p>`
+        : (done
+            ? (h.doneAt?`<p><b style="color:var(--ok)">${doneWord(h)} on:</b> ${fmtDT(new Date(h.doneAt))}</p>`:`<p><b style="color:var(--ok)">${doneWord(h)}</b></p>`)
+            : `<p><b style="color:var(--bad)">Still waiting to be ${m==='delivery'?'delivered':'picked up'}.</b></p>`)}
+      ${h.editedAt?`<p class="muted">Edited on: ${fmtDT(new Date(h.editedAt))}</p>`:''}
       <table><tbody>${h.items.map(i=>`<tr><td>${esc(i.name)}</td><td class="num">${i.qty} × ${peso(i.price)}</td><td class="num">${peso(i.qty*i.price)}</td></tr>`).join('')}</tbody></table>
       ${h.disc?`<p class="num">Discount: -${peso(h.disc)}</p>`:''}<p class="num"><b>Total: ${peso(h.total)}</b>${h.cash?` · Cash: ${peso(h.cash)}`:''}</p>
       ${h.notes?`<p style="white-space:pre-wrap"><b>Notes:</b> ${esc(h.notes)}</p>`:''}
-      ${done&&m!=='now'?`<button class="btn sm" data-reopen="${h.no}">Reopen (move back to Active Orders)</button>`:''}</div></details>`;
-  }).join('') : '<p class="muted">No saved receipts yet. A receipt is saved when you press “Save to history” or “Save + Print”.</p>';
+      <div class="hactions">
+        ${h.refunded?'':`<button class="btn sm" data-edit="${h.no}">✏️ Edit</button><button class="btn sm danger" data-refund="${h.no}">↩ Refund</button>`}
+        ${done&&!h.refunded&&m!=='now'?`<button class="btn sm" data-reopen="${h.no}">Reopen (move back to Active Orders)</button>`:''}
+      </div></div></details>`;
+  }).join('') : '<p class="muted">No receipts found for this day. Try “All days”, or save a receipt with “Save to history” / “Save + Print”.</p>';
 }
 $('#hlist').addEventListener('click', e=>{
-  const b = e.target.closest('[data-reopen]'); if(!b) return;
-  const h = receipts.find(x=>x.no===+b.dataset.reopen); if(!h) return;
-  if(!confirm('Move '+rn(h.no)+' back to Active Orders?')) return;
-  h.status = 'active'; h.doneAt = '';
-  ls.set('receipts', receipts);
-  updateActiveBadge(); renderHistory();
-  toast(rn(h.no)+' moved back to Active Orders');
+  const b = e.target.closest('button'); if(!b) return;
+  const find = n => receipts.find(x=>x.no===+n);
+  if(b.dataset.edit){
+    startEdit(find(b.dataset.edit));
+  } else if(b.dataset.refund){
+    const h = find(b.dataset.refund); if(!h) return;
+    if(!confirm('Refund '+rn(h.no)+' ('+peso(h.total)+') for '+h.customer+'?\n\nIt will be removed from sales and income, and from Active Orders if it is still there. This cannot be undone.')) return;
+    h.refunded = true; h.refundedAt = new Date().toISOString();
+    ls.set('receipts', receipts);
+    updateActiveBadge(); renderHistory();
+    toast(rn(h.no)+' refunded');
+  } else if(b.dataset.reopen){
+    const h = find(b.dataset.reopen); if(!h) return;
+    if(!confirm('Move '+rn(h.no)+' back to Active Orders?')) return;
+    h.status = 'active'; h.doneAt = '';
+    ls.set('receipts', receipts);
+    updateActiveBadge(); renderHistory();
+    toast(rn(h.no)+' moved back to Active Orders');
+  }
 });
+$('#hday').addEventListener('input', ()=>{
+  if(!$('#hday').value) $('#hday').value = todayKey();
+  hAll = false; hCustom = $('#hday').value!==todayKey(); renderHistory();
+});
+$('#hToday').onclick = ()=>{ hAll=false; hCustom=false; $('#hday').value=todayKey(); renderHistory(); };
+$('#hAllBtn').onclick = ()=>{ hAll=true; renderHistory(); };
 $('#hgo').onclick = tryUnlock;
 $('#hpw').addEventListener('keydown', e=>{ if(e.key==='Enter') tryUnlock(); });
 $('#hq').addEventListener('input', renderHistory);
@@ -804,11 +985,11 @@ $('#hlockbtn').onclick = ()=>{ lockHistory(); };
 $('#hcsv').onclick = ()=>{
   if(!unlocked) return;
   const q = v => '"'+String(v==null?'':v).replace(/"/g,'""')+'"';
-  const rows = [['Receipt','Date','Customer','Order type','Pick-up/Delivery time','Delivery address','Map pin','Items','Subtotal','Discount','Total','Cash','Notes','Status','Completed on']];
+  const rows = [['Receipt','Date','Customer','Order type','Pick-up/Delivery time','Delivery address','Map pin','Distance (km)','Items','Subtotal','Discount','Total','Cash','Notes','Status','Completed on','Refunded on','Edited on']];
   receipts.forEach(h=>rows.push([
-    rn(h.no), h.date, h.customer, MODES[h.mode||'now'], h.when||'', h.dAddr||'', h.pin?mapLink(h.pin):'',
+    rn(h.no), h.date, h.customer, MODES[h.mode||'now'], h.when||'', h.dAddr||'', h.pin?mapLink(h.pin):'', h.dist?h.dist.km:'',
     h.items.map(i=>i.qty+' x '+i.name+' @'+i.price).join('; '), h.sub, h.disc, h.total, h.cash, h.notes||'',
-    statusText(h), h.doneAt||''
+    statusText(h), h.doneAt||'', h.refundedAt||'', h.editedAt||''
   ]));
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([rows.map(r=>r.map(q).join(',')).join('\n')],{type:'text/csv'}));
@@ -816,6 +997,7 @@ $('#hcsv').onclick = ()=>{
 };
 
 $('#dt').value = toLocalInput(new Date()); updateDtHint();
+$('#hday').value = todayKey();
 updateActiveBadge();
 renderLines(); renderPaper();
 </script>
