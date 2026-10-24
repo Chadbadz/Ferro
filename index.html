@@ -87,6 +87,7 @@ details summary{cursor:pointer;font-weight:600}
 .stat .v{font-size:23px;font-weight:700;margin-top:2px}
 .stat .s{font-size:12px;color:var(--muted)}
 .stat.refund .v{color:var(--bad)}
+.stat.excl .v{color:var(--muted)}
 
 /* ---------- active orders ---------- */
 .agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:20px;align-items:start}
@@ -738,6 +739,10 @@ function finish(print){
   $('#saveMsg').textContent = msg;
   if(msg) return;
   const wasEdit = editNo!==null;
+  if(wasEdit && !receipts.some(h=>h.no===editNo)){
+    alert(rn(editNo)+' no longer exists in history (it was deleted). Cancel the edit and make a new receipt instead.');
+    return;
+  }
   if(wasEdit && !confirm('Save changes to '+rn(editNo)+'? This overwrites the saved receipt.')) return;
   const no = saveReceipt();
   const goesActive = isActive(receipts.find(h=>h.no===no));
@@ -821,7 +826,7 @@ let hAll = false, hCustom = false;   // history day filter: all days / custom da
 const isActive = h => h.status==='active' && !h.refunded;
 const doneWord = h => (h.mode==='delivery' ? 'Delivered' : 'Picked up');
 const statusText = h => h.refunded ? 'Refunded' : (h.status==='active' ? 'Active' : doneWord(h));
-const haystack = h => (rn(h.no)+' '+h.customer+' '+(h.addr||'')+' '+(h.dAddr||'')+' '+(h.notes||'')+' '+MODES[h.mode||'now']+' '+statusText(h)+' '+h.items.map(i=>i.name).join(' ')).toLowerCase();
+const haystack = h => (rn(h.no)+' '+h.customer+' '+(h.addr||'')+' '+(h.dAddr||'')+' '+(h.notes||'')+' '+MODES[h.mode||'now']+' '+statusText(h)+(h.excluded?' excluded':'')+' '+h.items.map(i=>i.name).join(' ')).toLowerCase();
 
 function saveReceipt(){
   const rec = draftRecord(), no = rec.no;
@@ -840,6 +845,7 @@ function saveReceipt(){
   } else {
     rec.status = 'active'; rec.doneAt = '';
   }
+  if(old && old.excluded){ rec.excluded = true; rec.excludedAt = old.excludedAt||''; }   // keep the "excluded from sales" flag
   if(idx>=0) receipts[idx] = rec; else receipts.push(rec);
   ls.set('receipts', receipts);
   updateActiveBadge();
@@ -912,15 +918,18 @@ function renderHistory(){
   $('#hToday').setAttribute('aria-pressed', !hAll && isToday);
   $('#hAllBtn').setAttribute('aria-pressed', hAll);
 
-  /* daily totals (refunded receipts are not counted as sales/income) */
+  /* daily totals: refunded and excluded receipts are not counted as sales/income */
   const inDay = receipts.filter(h=>hAll || dayKey(new Date(h.date))===dayVal);
-  const sold = inDay.filter(h=>!h.refunded), refd = inDay.filter(h=>h.refunded);
-  const income = sold.reduce((a,h)=>a+h.total,0), refAmt = refd.reduce((a,h)=>a+h.total,0);
+  const refd = inDay.filter(h=>h.refunded);
+  const excl = inDay.filter(h=>!h.refunded && h.excluded);
+  const sold = inDay.filter(h=>!h.refunded && !h.excluded);
+  const sum = arr => arr.reduce((a,h)=>a+h.total,0);
   const period = hAll ? 'All days' : (isToday ? 'Today · ' : '') + new Date(dayVal+'T12:00:00').toLocaleDateString('en-PH',{weekday:'short',year:'numeric',month:'short',day:'numeric'});
   $('#hstats').innerHTML =
-    statHTML('Total income', peso(income), period) +
+    statHTML('Total income', peso(sum(sold)), period) +
     statHTML('Number of sales', sold.length, period) +
-    (refd.length ? statHTML('Refunded', peso(refAmt), refd.length+' receipt'+(refd.length===1?'':'s'), 'refund') : '');
+    (refd.length ? statHTML('Refunded', peso(sum(refd)), refd.length+' receipt'+(refd.length===1?'':'s'), 'refund') : '') +
+    (excl.length ? statHTML('Excluded from sales', peso(sum(excl)), excl.length+' receipt'+(excl.length===1?'':'s'), 'excl') : '');
 
   const q = $('#hq').value.toLowerCase().trim();
   const list = inDay.filter(h=>!q || haystack(h).includes(q)).slice().reverse();
@@ -930,7 +939,7 @@ function renderHistory(){
     const w = h.when ? new Date(h.when) : null;
     const done = h.status!=='active';
     const bad = h.refunded || !done;
-    return `<details class="hrec"><summary><span>${rn(h.no)} · ${esc(h.customer)}<span class="badge">${MODES[m]}</span><span class="badge ${bad?'bad':'ok'}">${statusText(h)}</span></span><span class="muted">${fmtDT(d)}</span><b${h.refunded?' style="text-decoration:line-through"':''}>${peso(h.total)}</b></summary>
+    return `<details class="hrec"><summary><span>${rn(h.no)} · ${esc(h.customer)}<span class="badge">${MODES[m]}</span><span class="badge ${bad?'bad':'ok'}">${statusText(h)}</span>${h.excluded&&!h.refunded?'<span class="badge">Excluded from sales</span>':''}</span><span class="muted">${fmtDT(d)}</span><b${(h.refunded||h.excluded)?' style="text-decoration:line-through"':''}>${peso(h.total)}</b></summary>
       <div class="in">${h.addr?`<p class="muted">${esc(h.addr)}</p>`:''}
       ${w?`<p class="muted">${m==='delivery'?'Delivery needed on':'Pick-up on'}: ${fmtDT(w)}</p>`:''}
       ${h.dAddr?`<p class="muted">Deliver to: ${esc(h.dAddr)}</p>`:''}
@@ -941,13 +950,17 @@ function renderHistory(){
         : (done
             ? (h.doneAt?`<p><b style="color:var(--ok)">${doneWord(h)} on:</b> ${fmtDT(new Date(h.doneAt))}</p>`:`<p><b style="color:var(--ok)">${doneWord(h)}</b></p>`)
             : `<p><b style="color:var(--bad)">Still waiting to be ${m==='delivery'?'delivered':'picked up'}.</b></p>`)}
+      ${h.excluded&&!h.refunded?`<p class="muted">Not counted in total income or number of sales${h.excludedAt?' (excluded on '+fmtDT(new Date(h.excludedAt))+')':''}.</p>`:''}
       ${h.editedAt?`<p class="muted">Edited on: ${fmtDT(new Date(h.editedAt))}</p>`:''}
       <table><tbody>${h.items.map(i=>`<tr><td>${esc(i.name)}</td><td class="num">${i.qty} × ${peso(i.price)}</td><td class="num">${peso(i.qty*i.price)}</td></tr>`).join('')}</tbody></table>
       ${h.disc?`<p class="num">Discount: -${peso(h.disc)}</p>`:''}<p class="num"><b>Total: ${peso(h.total)}</b>${h.cash?` · Cash: ${peso(h.cash)}`:''}</p>
       ${h.notes?`<p style="white-space:pre-wrap"><b>Notes:</b> ${esc(h.notes)}</p>`:''}
       <div class="hactions">
-        ${h.refunded?'':`<button class="btn sm" data-edit="${h.no}">✏️ Edit</button><button class="btn sm danger" data-refund="${h.no}">↩ Refund</button>`}
+        ${h.refunded?'':`<button class="btn sm" data-edit="${h.no}">✏️ Edit</button>`}
+        ${h.refunded?'':`<button class="btn sm" data-exclude="${h.no}">${h.excluded?'➕ Include in sales':'🚫 Exclude from sales'}</button>`}
+        ${h.refunded?'':`<button class="btn sm danger" data-refund="${h.no}">↩ Refund</button>`}
         ${done&&!h.refunded&&m!=='now'?`<button class="btn sm" data-reopen="${h.no}">Reopen (move back to Active Orders)</button>`:''}
+        <button class="btn sm danger" data-delete="${h.no}">🗑 Delete</button>
       </div></div></details>`;
   }).join('') : '<p class="muted">No receipts found for this day. Try “All days”, or save a receipt with “Save to history” / “Save + Print”.</p>';
 }
@@ -963,6 +976,26 @@ $('#hlist').addEventListener('click', e=>{
     ls.set('receipts', receipts);
     updateActiveBadge(); renderHistory();
     toast(rn(h.no)+' refunded');
+  } else if(b.dataset.exclude){
+    const h = find(b.dataset.exclude); if(!h) return;
+    if(h.excluded){
+      if(!confirm('Include '+rn(h.no)+' ('+peso(h.total)+') in the number of sales and total income again?')) return;
+      delete h.excluded; delete h.excludedAt;
+      toast(rn(h.no)+' is counted in sales again');
+    } else {
+      if(!confirm('Exclude '+rn(h.no)+' ('+peso(h.total)+') from the number of sales and total income?\n\nThe receipt stays in history. You can include it again at any time.')) return;
+      h.excluded = true; h.excludedAt = new Date().toISOString();
+      toast(rn(h.no)+' excluded from sales');
+    }
+    ls.set('receipts', receipts);
+    renderHistory();
+  } else if(b.dataset.delete){
+    const h = find(b.dataset.delete); if(!h) return;
+    if(!confirm('Permanently delete '+rn(h.no)+' ('+h.customer+', '+peso(h.total)+')?\n\nIt will be removed from history, sales, income and Active Orders. This cannot be undone.\n\nTip: if you only want it out of the sales count, use “Exclude from sales” instead.')) return;
+    receipts = receipts.filter(x=>x.no!==h.no);
+    ls.set('receipts', receipts);
+    updateActiveBadge(); renderHistory();
+    toast(rn(h.no)+' deleted');
   } else if(b.dataset.reopen){
     const h = find(b.dataset.reopen); if(!h) return;
     if(!confirm('Move '+rn(h.no)+' back to Active Orders?')) return;
@@ -985,11 +1018,11 @@ $('#hlockbtn').onclick = ()=>{ lockHistory(); };
 $('#hcsv').onclick = ()=>{
   if(!unlocked) return;
   const q = v => '"'+String(v==null?'':v).replace(/"/g,'""')+'"';
-  const rows = [['Receipt','Date','Customer','Order type','Pick-up/Delivery time','Delivery address','Map pin','Distance (km)','Items','Subtotal','Discount','Total','Cash','Notes','Status','Completed on','Refunded on','Edited on']];
+  const rows = [['Receipt','Date','Customer','Order type','Pick-up/Delivery time','Delivery address','Map pin','Distance (km)','Items','Subtotal','Discount','Total','Cash','Notes','Status','Completed on','Refunded on','Edited on','Excluded from sales']];
   receipts.forEach(h=>rows.push([
     rn(h.no), h.date, h.customer, MODES[h.mode||'now'], h.when||'', h.dAddr||'', h.pin?mapLink(h.pin):'', h.dist?h.dist.km:'',
     h.items.map(i=>i.qty+' x '+i.name+' @'+i.price).join('; '), h.sub, h.disc, h.total, h.cash, h.notes||'',
-    statusText(h), h.doneAt||'', h.refundedAt||'', h.editedAt||''
+    statusText(h), h.doneAt||'', h.refundedAt||'', h.editedAt||'', h.excluded?'Yes':''
   ]));
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([rows.map(r=>r.map(q).join(',')).join('\n')],{type:'text/csv'}));
