@@ -381,8 +381,8 @@ const DATA = ROWS.map(r => ({n:r[0], u:r[1], p:r[2], c:CATS[r[3]], s:!!r[4]}));
 const $ = s => document.querySelector(s);
 /* Cloud sync setup: paste your Supabase Project URL and anon/publishable key here.
    Never put a service_role/secret key in website code. See SUPABASE_SETUP.md. */
-const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_OR_PUBLISHABLE_KEY';
+const SUPABASE_URL = 'https://ilrwdxssvqmppladcwrm.supabase.co/rest/v1/';
+const SUPABASE_ANON_KEY = 'sb_publishable_lsdnksQYShy9ACQ4y89lYA_h7YWaBf9';
 const cloudConfigured = !!(window.supabase && window.supabase.createClient &&
   /^https:\/\//i.test(SUPABASE_URL) && !SUPABASE_URL.includes('YOUR_') &&
   SUPABASE_ANON_KEY.length > 20 && !SUPABASE_ANON_KEY.includes('YOUR_'));
