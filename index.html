@@ -14,9 +14,12 @@ body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-ap
 header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 18px;background:var(--surface);border-bottom:1px solid var(--line)}
 h1{font-size:17px;margin:0;letter-spacing:.04em;text-transform:uppercase}
 h1 span{color:var(--accent)}
-nav{display:flex;gap:6px;margin-left:auto}
+nav{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
 nav button{padding:8px 16px;border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:8px;font:inherit;font-weight:600;cursor:pointer}
 nav button[aria-selected="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.tab-count{display:inline-block;min-width:20px;padding:0 6px;margin-left:6px;border-radius:99px;background:#d62020;color:#fff;font-size:12px;line-height:20px;text-align:center}
+.tab-count.hide{display:none}
+nav button[aria-selected="true"] .tab-count{background:#fff;color:#d62020}
 main{max-width:1180px;margin:0 auto;padding:18px}
 .grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:18px;align-items:start}
 @media (max-width:860px){.grid{grid-template-columns:1fr}}
@@ -47,6 +50,7 @@ td input{padding:6px 7px}
 .chips.big .chip{padding:9px 16px;font-size:14px;font-weight:600}
 .badge{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;background:var(--chip);color:var(--muted);margin-left:6px}
 .badge.bad{color:var(--bad)}
+.badge.ok{color:var(--ok)}
 .loc{display:inline-flex;align-items:center;gap:6px;font-weight:600}
 .loc.def{font-weight:500;color:var(--muted)}
 .paper{background:#fff;color:#111;border:1px solid var(--line);border-radius:6px;padding:20px 18px;font:13px/1.5 "Courier New",ui-monospace,monospace;max-width:400px;margin:0 auto;box-shadow:0 2px 10px rgba(0,0,0,.12)}
@@ -69,8 +73,48 @@ details summary{cursor:pointer;font-weight:600}
 .btnstack{display:grid;gap:8px;margin-bottom:14px}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:99px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .25s;z-index:9999;max-width:90vw;text-align:center}
 #toast.show{opacity:1}
+
+/* ---------- active orders ---------- */
+.agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:20px;align-items:start}
+.ahead{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:10px}
+.ahead .badge{margin:0}
+.abtn{width:100%;margin-top:12px;padding:11px 14px}
+
+/* two red lines circling the receipt */
+.orbit{position:relative;isolation:isolate;overflow:hidden;border-radius:15px;padding:3px;background:rgba(255,31,31,.16);box-shadow:0 0 16px rgba(255,31,31,.22)}
+.orbit::before{content:"";position:absolute;left:50%;top:50%;width:300%;height:300%;z-index:-1;
+  background:conic-gradient(from 0deg,transparent 0deg,#ff1f1f 70deg,transparent 71deg,transparent 180deg,#ff1f1f 250deg,transparent 251deg,transparent 360deg);
+  transform:translate(-50%,-50%) rotate(0deg);animation:orbit 3.4s linear infinite}
+@keyframes orbit{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+.orbit-in{position:relative;background:var(--surface);border-radius:12px;padding:14px}
+
+/* ---------- intro ---------- */
+#intro{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;background:radial-gradient(circle at 50% 45%,#232b38 0%,#0d1117 72%);color:#fff;cursor:pointer;transition:opacity .6s ease,visibility .6s}
+#intro.out{opacity:0;visibility:hidden}
+.intro-box{position:relative;text-align:center;padding:20px}
+.beam{display:block;margin:0 auto 14px;overflow:visible}
+.beam path{fill:rgba(255,122,48,0);stroke:#ff7a30;stroke-width:3;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 0 8px rgba(255,122,48,.7));animation:draw 1.1s cubic-bezier(.6,.1,.2,1) .15s forwards,fillin .5s ease 1.1s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes fillin{to{fill:rgba(255,122,48,.92)}}
+.sparks i{position:absolute;left:50%;top:80px;width:5px;height:5px;margin-left:-2px;border-radius:50%;background:#ffd08a;box-shadow:0 0 8px #ff9a4d;opacity:0;animation:spark .9s ease-out 1.05s forwards}
+@keyframes spark{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.2)}}
+.intro-title{display:flex;justify-content:center;font-size:clamp(30px,8vw,54px);font-weight:800;letter-spacing:.16em;line-height:1.1}
+.intro-title span{opacity:0;transform:translateY(18px);animation:rise .5s ease forwards;animation-delay:calc(.9s + var(--i)*.07s)}
+.intro-title .o{color:#ff7a30}
+@keyframes rise{to{opacity:1;transform:none}}
+.intro-sub{margin-top:10px;font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:#98a1b0;opacity:0;animation:rise .6s ease 1.7s forwards}
+.intro-bar{width:190px;height:3px;margin:24px auto 0;background:rgba(255,255,255,.12);border-radius:3px;overflow:hidden}
+.intro-bar i{display:block;height:100%;background:#ff7a30;transform:scaleX(0);transform-origin:left;animation:load 2.3s ease .4s forwards}
+@keyframes load{to{transform:scaleX(1)}}
+.intro-skip{margin-top:18px;font-size:12px;color:#667082;opacity:0;animation:rise .6s ease 1.2s forwards}
+
+@media (prefers-reduced-motion:reduce){
+  .orbit::before{animation:none}
+  #intro *{animation-duration:.01s!important;animation-delay:0s!important}
+}
+
 @media print{
-  header,.noprint,.card:not(.printable),#toast{display:none!important}
+  header,.noprint,.card:not(.printable),#toast,#intro,#page-active{display:none!important}
   body{background:#fff}
   main{padding:0;max-width:none}
   .grid{display:block}
@@ -80,10 +124,45 @@ details summary{cursor:pointer;font-weight:600}
 </style>
 </head>
 <body>
+
+<!-- INTRO -->
+<div id="intro" role="presentation">
+  <div class="intro-box">
+    <svg class="beam" viewBox="0 0 120 120" width="120" height="120" aria-hidden="true">
+      <path pathLength="1" d="M20 24H100V40H68V80H100V96H20V80H52V40H20Z"/>
+    </svg>
+    <div class="sparks" aria-hidden="true">
+      <i style="--dx:-60px;--dy:-46px"></i><i style="--dx:-34px;--dy:-70px"></i><i style="--dx:8px;--dy:-78px"></i>
+      <i style="--dx:46px;--dy:-60px"></i><i style="--dx:70px;--dy:-24px"></i><i style="--dx:-72px;--dy:-10px"></i>
+    </div>
+    <div class="intro-title" aria-label="Ferro POS">
+      <span style="--i:0">F</span><span style="--i:1">E</span><span style="--i:2">R</span><span style="--i:3">R</span><span style="--i:4">O</span><span style="--i:5">&nbsp;</span><span class="o" style="--i:6">P</span><span class="o" style="--i:7">O</span><span class="o" style="--i:8">S</span>
+    </div>
+    <div class="intro-sub">Steel · Hardware · Receipts</div>
+    <div class="intro-bar"><i></i></div>
+    <div class="intro-skip">Tap to skip</div>
+  </div>
+</div>
+<script>
+(function(){
+  var el = document.getElementById('intro'), closed = false;
+  var reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function close(){
+    if(closed) return; closed = true;
+    el.classList.add('out');
+    setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 700);
+  }
+  el.addEventListener('click', close);
+  document.addEventListener('keydown', close, {once:true});
+  setTimeout(close, reduced ? 600 : 3100);
+})();
+</script>
+
 <header>
   <h1>Ferro <span>POS</span></h1>
   <nav role="tablist">
     <button role="tab" id="tab-receipt" aria-selected="true">Make Receipt</button>
+    <button role="tab" id="tab-active" aria-selected="false">Active Orders<span class="tab-count hide" id="acount">0</span></button>
     <button role="tab" id="tab-finder" aria-selected="false">Find Product</button>
     <button role="tab" id="tab-history" aria-selected="false">🔒 History</button>
   </nav>
@@ -201,6 +280,17 @@ details summary{cursor:pointer;font-weight:600}
   </div>
 </section>
 
+<!-- ACTIVE ORDERS PAGE -->
+<section id="page-active" class="hide">
+  <div class="card">
+    <h2>Active orders · not yet claimed / delivered</h2>
+    <input id="aq" placeholder="Search by receipt no., customer, item, address or notes…">
+    <div class="chips" id="achips"></div>
+    <p class="muted" id="asum" style="margin:0"></p>
+  </div>
+  <div class="agrid" id="alist"></div>
+</section>
+
 <!-- FINDER PAGE -->
 <section id="page-finder" class="hide">
   <div class="card">
@@ -232,7 +322,7 @@ details summary{cursor:pointer;font-weight:600}
   </div>
   <div class="card hide" id="hbody">
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-      <input id="hq" placeholder="Search by receipt no., customer, item, address or notes…" style="flex:1;min-width:200px">
+      <input id="hq" placeholder="Search by receipt no., customer, item, address, notes or status…" style="flex:1;min-width:200px">
       <button class="btn" id="hcsv">Export CSV</button>
       <button class="btn" id="hlockbtn">Lock</button>
     </div>
@@ -269,11 +359,16 @@ const search = (q, list) => {
   return list.filter(p => { const h = (label(p)+' '+p.c+' '+loc(p)).toLowerCase(); return t.every(x=>h.includes(x)); });
 };
 
+/* Pick-up now = handed over right away, so it is marked done automatically.
+   Set to false if you also want "Pick-up now" receipts to appear in Active Orders. */
+const AUTO_COMPLETE_NOW = true;
+
 /* ---------- helpers: dates, toast ---------- */
 const pad = n => String(n).padStart(2,'0');
 const toLocalInput = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
 const fmtDT = d => d.toLocaleDateString('en-PH')+' '+d.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'});
 const parseDT = v => { if(!v) return null; const d = new Date(v); return isNaN(d) ? null : d; };
+const rn = n => 'OR-'+String(n).padStart(6,'0');
 const MODES = {now:'Pick-up now', later:'Pick-up later', delivery:'Delivery'};
 const mapLink = p => 'https://www.google.com/maps?q='+p.lat+','+p.lng;
 let toastTimer;
@@ -283,19 +378,19 @@ function toast(msg){
 }
 
 /* ---------- tabs ---------- */
+const TABS = ['receipt','active','finder','history'];
 function showTab(t){
-  ['receipt','finder','history'].forEach(n=>{
+  TABS.forEach(n=>{
     $('#page-'+n).classList.toggle('hide', t!==n);
     $('#tab-'+n).setAttribute('aria-selected', t===n);
   });
   if(t!=='history') lockHistory();
+  if(t==='active') renderActive();
   if(t==='finder') renderFinder();
   if(t==='history') renderHistory();
   if(t==='receipt' && map) setTimeout(()=>map.invalidateSize(),50);
 }
-$('#tab-receipt').onclick = ()=>showTab('receipt');
-$('#tab-finder').onclick = ()=>showTab('finder');
-$('#tab-history').onclick = ()=>showTab('history');
+TABS.forEach(n=>{ $('#tab-'+n).onclick = ()=>showTab(n); });
 
 /* ---------- receipt state: date/time, mode, delivery ---------- */
 let dtAuto = true;          // true = receipt uses the current time
@@ -422,36 +517,53 @@ function totals(){
   const total = sub-disc, cash = parseFloat($('#cash').value)||0;
   return {sub,disc,total,cash,change:cash-total};
 }
-function renderPaper(){
-  const t = totals(), now = getReceiptDate();
-  const name = $('#cName').value.trim(), addr = $('#cAddr').value.trim();
-  const notes = $('#notes').value.trim(), dAddr = $('#dAddr').value.trim();
-  const when = parseDT($('#when').value);
-  const whenLabel = mode==='delivery' ? 'Deliver on' : 'Pick-up on';
-  $('#paper').innerHTML = `
+
+/* the receipt currently being typed, as a plain record */
+function draftRecord(){
+  const t = totals();
+  const when = mode==='now' ? null : parseDT($('#when').value);
+  return {
+    no:rno, date:getReceiptDate().toISOString(),
+    customer:$('#cName').value.trim()||'Walk-in', addr:$('#cAddr').value.trim(),
+    items:items.map(i=>({name:i.name,qty:i.qty,price:i.price})),
+    sub:t.sub, disc:t.disc, total:t.total, cash:t.cash,
+    notes:$('#notes').value.trim(),
+    mode:mode, when:when?when.toISOString():'',
+    dAddr:mode==='delivery'?$('#dAddr').value.trim():'',
+    pin:mode==='delivery'?pin:null
+  };
+}
+
+/* one receipt layout used by the live preview AND the Active Orders cards */
+function receiptHTML(r){
+  const m = r.mode||'now', when = r.when ? new Date(r.when) : null, change = r.cash - r.total;
+  const whenLabel = m==='delivery' ? 'Deliver on' : 'Pick-up on';
+  return `
     <h3>${esc(shop.name||'STORE')}</h3>
     <div class="c">${esc(shop.addr||'')}${shop.tel?'<br>Tel: '+esc(shop.tel):''}</div>
     <hr>
-    <div class="ln"><span>Receipt no.</span><span>OR-${String(rno).padStart(6,'0')}</span></div>
-    <div class="ln"><span>Date</span><span>${fmtDT(now)}</span></div>
-    <div class="ln"><span>Customer</span><span>${esc(name||'Walk-in')}</span></div>
-    ${addr?`<div class="ln"><span>Address</span><span>${esc(addr)}</span></div>`:''}
-    <div class="ln"><span>Order type</span><span>${MODES[mode]}</span></div>
-    ${mode!=='now'&&when?`<div class="ln"><span>${whenLabel}</span><span>${fmtDT(when)}</span></div>`:''}
-    ${mode==='delivery'&&dAddr?`<div class="ln"><span>Deliver to</span><span>${esc(dAddr)}</span></div>`:''}
-    ${mode==='delivery'&&pin?`<div class="ln"><span>Map pin</span><span><a href="${mapLink(pin)}">${pin.lat.toFixed(5)}, ${pin.lng.toFixed(5)}</a></span></div>`:''}
+    <div class="ln"><span>Receipt no.</span><span>${rn(r.no)}</span></div>
+    <div class="ln"><span>Date</span><span>${fmtDT(new Date(r.date))}</span></div>
+    <div class="ln"><span>Customer</span><span>${esc(r.customer||'Walk-in')}</span></div>
+    ${r.addr?`<div class="ln"><span>Address</span><span>${esc(r.addr)}</span></div>`:''}
+    <div class="ln"><span>Order type</span><span>${MODES[m]}</span></div>
+    ${m!=='now'&&when?`<div class="ln"><span>${whenLabel}</span><span>${fmtDT(when)}</span></div>`:''}
+    ${m==='delivery'&&r.dAddr?`<div class="ln"><span>Deliver to</span><span>${esc(r.dAddr)}</span></div>`:''}
+    ${m==='delivery'&&r.pin?`<div class="ln"><span>Map pin</span><span><a href="${mapLink(r.pin)}" target="_blank" rel="noopener">${r.pin.lat.toFixed(5)}, ${r.pin.lng.toFixed(5)}</a></span></div>`:''}
     <hr>
-    ${items.length ? items.map(i=>`<div class="it">${esc(i.name)}<div class="ln"><span>${i.qty} × ${peso(i.price)}</span><span>${peso(i.qty*i.price)}</span></div></div>`).join('') : '<div class="c">— no items —</div>'}
+    ${r.items.length ? r.items.map(i=>`<div class="it">${esc(i.name)}<div class="ln"><span>${i.qty} × ${peso(i.price)}</span><span>${peso(i.qty*i.price)}</span></div></div>`).join('') : '<div class="c">— no items —</div>'}
     <hr>
-    <div class="ln"><span>Subtotal</span><span>${peso(t.sub)}</span></div>
-    ${t.disc?`<div class="ln"><span>Discount</span><span>-${peso(t.disc)}</span></div>`:''}
-    <div class="ln" style="font-weight:700;font-size:15px"><span>TOTAL</span><span>${peso(t.total)}</span></div>
-    ${t.cash?`<div class="ln"><span>Cash</span><span>${peso(t.cash)}</span></div><div class="ln"><span>Change</span><span>${peso(Math.max(0,t.change))}</span></div>`:''}
-    ${t.cash&&t.change<0?`<div class="ln"><span>Balance due</span><span>${peso(-t.change)}</span></div>`:''}
-    ${notes?`<hr><div><b>Notes:</b></div><div class="notes">${esc(notes)}</div>`:''}
+    <div class="ln"><span>Subtotal</span><span>${peso(r.sub)}</span></div>
+    ${r.disc?`<div class="ln"><span>Discount</span><span>-${peso(r.disc)}</span></div>`:''}
+    <div class="ln" style="font-weight:700;font-size:15px"><span>TOTAL</span><span>${peso(r.total)}</span></div>
+    ${r.cash?`<div class="ln"><span>Cash</span><span>${peso(r.cash)}</span></div><div class="ln"><span>Change</span><span>${peso(Math.max(0,change))}</span></div>`:''}
+    ${r.cash&&change<0?`<div class="ln"><span>Balance due</span><span>${peso(-change)}</span></div>`:''}
+    ${r.notes?`<hr><div><b>Notes:</b></div><div class="notes">${esc(r.notes)}</div>`:''}
     <hr>
     <div class="c">Thank you for your purchase!</div>`;
 }
+function renderPaper(){ $('#paper').innerHTML = receiptHTML(draftRecord()); }
+
 ['cName','cAddr','disc','cash'].forEach(id=>$('#'+id).addEventListener('input', renderPaper));
 [['sName','name'],['sAddr','addr'],['sTel','tel']].forEach(([id,k])=>{
   $('#'+id).value = shop[k]||'';
@@ -502,16 +614,16 @@ function finish(print){
   $('#saveMsg').textContent = msg;
   if(msg) return;
   const no = saveReceipt();
+  const goesActive = receipts.find(h=>h.no===no).status==='active';
+  const after = ()=>{
+    newReceipt();
+    toast(rn(no)+' saved to history'+(goesActive?' · added to Active Orders':''));
+  };
   if(print){
-    const done = ()=>{
-      window.removeEventListener('afterprint', done);
-      newReceipt(); toast(rn(no)+' saved to history');
-    };
+    const done = ()=>{ window.removeEventListener('afterprint', done); after(); };
     window.addEventListener('afterprint', done);
     window.print();
-  } else {
-    newReceipt(); toast(rn(no)+' saved to history');
-  }
+  } else after();
 }
 $('#saveOnly').onclick = ()=>finish(false);
 $('#savePrint').onclick = ()=>finish(true);
@@ -560,29 +672,87 @@ $('#zones').addEventListener('input', e=>{
 });
 $('#zones').addEventListener('change', renderFinder);
 
-/* ---------- locked receipt history ---------- */
+/* ---------- saved receipts (history + active orders share this list) ---------- */
 const PW_HASH = 'c261f1358f8fd6809c9766d84d9b3752d84624ed1242ad8b49db60912af9d378';
-let receipts = ls.get('receipts', []);
+/* older saved receipts have no status: pick-up now = done, later/delivery = still active */
+let receipts = ls.get('receipts', []).map(h=>{
+  if(!h.status){
+    const m = h.mode||'now';
+    h.status = m==='now' ? 'done' : 'active';
+    h.doneAt = m==='now' ? h.date : '';
+  }
+  return h;
+});
+ls.set('receipts', receipts);
 let unlocked = false;
-const rn = n => 'OR-'+String(n).padStart(6,'0');
+
+const isActive = h => h.status==='active';
+const doneWord = h => (h.mode==='delivery' ? 'Delivered' : 'Picked up');
+const statusText = h => isActive(h) ? 'Active' : doneWord(h);
+const haystack = h => (rn(h.no)+' '+h.customer+' '+(h.addr||'')+' '+(h.dAddr||'')+' '+(h.notes||'')+' '+MODES[h.mode||'now']+' '+statusText(h)+' '+h.items.map(i=>i.name).join(' ')).toLowerCase();
+
 function saveReceipt(){
-  const t = totals();
-  const when = mode==='now' ? null : parseDT($('#when').value);
-  const rec = {
-    no:rno, date:getReceiptDate().toISOString(),
-    customer:$('#cName').value.trim()||'Walk-in', addr:$('#cAddr').value.trim(),
-    items:items.map(i=>({name:i.name,qty:i.qty,price:i.price})),
-    sub:t.sub, disc:t.disc, total:t.total, cash:t.cash,
-    notes:$('#notes').value.trim(),
-    mode:mode, when:when?when.toISOString():'',
-    dAddr:mode==='delivery'?$('#dAddr').value.trim():'',
-    pin:mode==='delivery'?pin:null
-  };
+  const rec = draftRecord();
   const idx = receipts.findIndex(h=>h.no===rno);
+  if(idx>=0 && receipts[idx].status){
+    rec.status = receipts[idx].status; rec.doneAt = receipts[idx].doneAt||'';   // keep progress if saved twice
+  } else if(mode==='now' && AUTO_COMPLETE_NOW){
+    rec.status = 'done'; rec.doneAt = new Date().toISOString();
+  } else {
+    rec.status = 'active'; rec.doneAt = '';
+  }
   if(idx>=0) receipts[idx] = rec; else receipts.push(rec);
   ls.set('receipts', receipts);
+  updateActiveBadge();
   return rno;
 }
+function updateActiveBadge(){
+  const n = receipts.filter(isActive).length;
+  $('#acount').textContent = n;
+  $('#acount').classList.toggle('hide', !n);
+}
+
+/* ---------- active orders ---------- */
+let aFilter = 'all';
+const dueTime = h => new Date(h.when||h.date).getTime();
+function renderActive(){
+  const all = receipts.filter(isActive);
+  const nPick = all.filter(h=>h.mode!=='delivery').length, nDel = all.length-nPick;
+  $('#achips').innerHTML = [['all','All ('+all.length+')'],['pickup','Pick-up ('+nPick+')'],['delivery','Delivery ('+nDel+')']]
+    .map(([k,t])=>`<button class="chip" data-f="${k}" aria-pressed="${aFilter===k}">${t}</button>`).join('');
+  const q = $('#aq').value.toLowerCase().trim();
+  let list = all.filter(h=> aFilter==='all' || (aFilter==='pickup' ? h.mode!=='delivery' : h.mode==='delivery'));
+  if(q) list = list.filter(h=>haystack(h).includes(q));
+  list.sort((a,b)=>dueTime(a)-dueTime(b));
+  const now = Date.now(), overdue = list.filter(h=>h.when && new Date(h.when).getTime()<now).length;
+  $('#asum').textContent = list.length
+    ? list.length+' active order'+(list.length===1?'':'s')+(overdue?' · '+overdue+' overdue':'')+' · sorted by due time'
+    : (all.length ? 'No active orders match your search or filter.' : 'No active orders right now. Pick-up later and Delivery receipts show up here until you mark them as done.');
+  $('#alist').innerHTML = list.map(h=>{
+    const m = h.mode||'now', due = h.when ? new Date(h.when) : null, over = due && due.getTime()<now;
+    return `<div class="orbit"><div class="orbit-in">
+      <div class="ahead">
+        <span class="badge">${MODES[m]}</span>${over?'<span class="badge bad">Overdue</span>':''}
+        ${due?`<span class="muted">${m==='delivery'?'Needed':'Pick-up'}: ${fmtDT(due)}</span>`:''}
+      </div>
+      <div class="paper">${receiptHTML(h)}</div>
+      <button class="btn primary abtn" data-done="${h.no}">✔ Mark as done (${m==='delivery'?'Delivered':'Picked up'})</button>
+    </div></div>`;
+  }).join('');
+}
+$('#aq').addEventListener('input', renderActive);
+$('#achips').addEventListener('click', e=>{ const b=e.target.closest('[data-f]'); if(!b) return; aFilter=b.dataset.f; renderActive(); });
+$('#alist').addEventListener('click', e=>{
+  const b = e.target.closest('[data-done]'); if(!b) return;
+  const h = receipts.find(x=>x.no===+b.dataset.done); if(!h) return;
+  if(!confirm('Mark '+rn(h.no)+' as '+doneWord(h).toLowerCase()+'?')) return;
+  h.status = 'done'; h.doneAt = new Date().toISOString();
+  ls.set('receipts', receipts);
+  updateActiveBadge(); renderActive();
+  toast(rn(h.no)+' marked as '+doneWord(h).toLowerCase());
+});
+
+/* ---------- locked receipt history ---------- */
 async function sha256(s){
   const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
   return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
@@ -598,21 +768,35 @@ function renderHistory(){
   $('#hbody').classList.toggle('hide', !unlocked);
   if(!unlocked) return;
   const q = $('#hq').value.toLowerCase().trim();
-  const list = receipts.filter(h=>!q || (rn(h.no)+' '+h.customer+' '+(h.dAddr||'')+' '+(h.notes||'')+' '+h.items.map(i=>i.name).join(' ')).toLowerCase().includes(q)).slice().reverse();
+  const list = receipts.filter(h=>!q || haystack(h).includes(q)).slice().reverse();
   $('#hsum').textContent = list.length+' receipt'+(list.length===1?'':'s')+' · Total sales '+peso(list.reduce((a,h)=>a+h.total,0));
   $('#hlist').innerHTML = list.length ? list.map(h=>{
     const d = new Date(h.date), m = h.mode||'now';
     const w = h.when ? new Date(h.when) : null;
-    return `<details class="hrec"><summary><span>${rn(h.no)} · ${esc(h.customer)}<span class="badge">${MODES[m]}</span></span><span class="muted">${fmtDT(d)}</span><b>${peso(h.total)}</b></summary>
+    const done = !isActive(h);
+    return `<details class="hrec"><summary><span>${rn(h.no)} · ${esc(h.customer)}<span class="badge">${MODES[m]}</span><span class="badge ${done?'ok':'bad'}">${statusText(h)}</span></span><span class="muted">${fmtDT(d)}</span><b>${peso(h.total)}</b></summary>
       <div class="in">${h.addr?`<p class="muted">${esc(h.addr)}</p>`:''}
       ${w?`<p class="muted">${m==='delivery'?'Delivery needed on':'Pick-up on'}: ${fmtDT(w)}</p>`:''}
       ${h.dAddr?`<p class="muted">Deliver to: ${esc(h.dAddr)}</p>`:''}
       ${h.pin?`<p class="muted">Map pin: <a href="${mapLink(h.pin)}" target="_blank" rel="noopener">${h.pin.lat.toFixed(5)}, ${h.pin.lng.toFixed(5)} (open map)</a></p>`:''}
+      ${done
+        ? (h.doneAt?`<p><b style="color:var(--ok)">${doneWord(h)} on:</b> ${fmtDT(new Date(h.doneAt))}</p>`:`<p><b style="color:var(--ok)">${doneWord(h)}</b></p>`)
+        : `<p><b style="color:var(--bad)">Still waiting to be ${m==='delivery'?'delivered':'picked up'}.</b></p>`}
       <table><tbody>${h.items.map(i=>`<tr><td>${esc(i.name)}</td><td class="num">${i.qty} × ${peso(i.price)}</td><td class="num">${peso(i.qty*i.price)}</td></tr>`).join('')}</tbody></table>
       ${h.disc?`<p class="num">Discount: -${peso(h.disc)}</p>`:''}<p class="num"><b>Total: ${peso(h.total)}</b>${h.cash?` · Cash: ${peso(h.cash)}`:''}</p>
-      ${h.notes?`<p style="white-space:pre-wrap"><b>Notes:</b> ${esc(h.notes)}</p>`:''}</div></details>`;
+      ${h.notes?`<p style="white-space:pre-wrap"><b>Notes:</b> ${esc(h.notes)}</p>`:''}
+      ${done&&m!=='now'?`<button class="btn sm" data-reopen="${h.no}">Reopen (move back to Active Orders)</button>`:''}</div></details>`;
   }).join('') : '<p class="muted">No saved receipts yet. A receipt is saved when you press “Save to history” or “Save + Print”.</p>';
 }
+$('#hlist').addEventListener('click', e=>{
+  const b = e.target.closest('[data-reopen]'); if(!b) return;
+  const h = receipts.find(x=>x.no===+b.dataset.reopen); if(!h) return;
+  if(!confirm('Move '+rn(h.no)+' back to Active Orders?')) return;
+  h.status = 'active'; h.doneAt = '';
+  ls.set('receipts', receipts);
+  updateActiveBadge(); renderHistory();
+  toast(rn(h.no)+' moved back to Active Orders');
+});
 $('#hgo').onclick = tryUnlock;
 $('#hpw').addEventListener('keydown', e=>{ if(e.key==='Enter') tryUnlock(); });
 $('#hq').addEventListener('input', renderHistory);
@@ -620,10 +804,11 @@ $('#hlockbtn').onclick = ()=>{ lockHistory(); };
 $('#hcsv').onclick = ()=>{
   if(!unlocked) return;
   const q = v => '"'+String(v==null?'':v).replace(/"/g,'""')+'"';
-  const rows = [['Receipt','Date','Customer','Order type','Pick-up/Delivery time','Delivery address','Map pin','Items','Subtotal','Discount','Total','Cash','Notes']];
+  const rows = [['Receipt','Date','Customer','Order type','Pick-up/Delivery time','Delivery address','Map pin','Items','Subtotal','Discount','Total','Cash','Notes','Status','Completed on']];
   receipts.forEach(h=>rows.push([
     rn(h.no), h.date, h.customer, MODES[h.mode||'now'], h.when||'', h.dAddr||'', h.pin?mapLink(h.pin):'',
-    h.items.map(i=>i.qty+' x '+i.name+' @'+i.price).join('; '), h.sub, h.disc, h.total, h.cash, h.notes||''
+    h.items.map(i=>i.qty+' x '+i.name+' @'+i.price).join('; '), h.sub, h.disc, h.total, h.cash, h.notes||'',
+    statusText(h), h.doneAt||''
   ]));
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([rows.map(r=>r.map(q).join(',')).join('\n')],{type:'text/csv'}));
@@ -631,6 +816,7 @@ $('#hcsv').onclick = ()=>{
 };
 
 $('#dt').value = toLocalInput(new Date()); updateDtHint();
+updateActiveBadge();
 renderLines(); renderPaper();
 </script>
 </body>
