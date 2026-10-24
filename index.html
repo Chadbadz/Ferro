@@ -382,7 +382,7 @@ const $ = s => document.querySelector(s);
 /* Cloud sync setup: paste your Supabase Project URL and anon/publishable key here.
    Never put a service_role/secret key in website code. See SUPABASE_SETUP.md. */
 const SUPABASE_URL = 'https://ilrwdxssvqmppladcwrm.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_secret_M_6oRGDl6jbGSu312PBy7Q_5ECD74gX';
+const SUPABASE_ANON_KEY = 'sb_publishable_lsdnksQYShy9ACQ4y89lYA_h7YWaBf9';
 const cloudConfigured = !!(window.supabase && window.supabase.createClient &&
   /^https:\/\//i.test(SUPABASE_URL) && !SUPABASE_URL.includes('YOUR_') &&
   SUPABASE_ANON_KEY.length > 20 && !SUPABASE_ANON_KEY.includes('YOUR_'));
