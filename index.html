@@ -333,8 +333,22 @@ details summary{cursor:pointer;font-weight:600}
 
 <!-- HISTORY PAGE (password locked) -->
 <section id="page-history" class="hide">
+  <div class="card" id="cloudCard" style="max-width:620px;margin:0 auto 16px">
+    <h2>☁️ Receipt sync across devices</h2>
+    <p class="muted" style="margin-top:0">Sign in with the same cloud account on every device. This is separate from the History password below.</p>
+    <div class="row" id="cloudAuthFields">
+      <div><label for="cloudEmail">Cloud account email</label><input id="cloudEmail" type="email" autocomplete="username" placeholder="you@example.com"></div>
+      <div><label for="cloudPassword">Cloud account password</label><input id="cloudPassword" type="password" autocomplete="current-password"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      <button class="btn primary" id="cloudLogin" type="button">Sign in &amp; sync</button>
+      <button class="btn hide" id="cloudLogout" type="button">Sign out</button>
+    </div>
+    <p class="err" id="cloudStatus" role="status" aria-live="polite" style="margin-top:10px"></p>
+  </div>
   <div class="card" id="hlock" style="max-width:420px;margin:30px auto">
     <h2>🔒 Receipt history is locked</h2>
+    <p class="muted">This local History password is separate from the cloud sync sign-in above.</p>
     <label for="hpw">Password</label>
     <input id="hpw" type="password" autocomplete="off">
     <p class="err" id="hmsg"></p>
@@ -360,10 +374,20 @@ details summary{cursor:pointer;font-weight:600}
 <div id="toast" role="status"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="products.js"></script>
 <script>
 const DATA = ROWS.map(r => ({n:r[0], u:r[1], p:r[2], c:CATS[r[3]], s:!!r[4]}));
 const $ = s => document.querySelector(s);
+/* Cloud sync setup: paste your Supabase Project URL and anon/publishable key here.
+   Never put a service_role/secret key in website code. See SUPABASE_SETUP.md. */
+const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_OR_PUBLISHABLE_KEY';
+const cloudConfigured = !!(window.supabase && window.supabase.createClient &&
+  /^https:\/\//i.test(SUPABASE_URL) && !SUPABASE_URL.includes('YOUR_') &&
+  SUPABASE_ANON_KEY.length > 20 && !SUPABASE_ANON_KEY.includes('YOUR_'));
+const cloudClient = cloudConfigured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+let cloudUser = null, cloudSyncBusy = false, cloudPollTimer = null, savingReceipt = false;
 const peso = n => new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(+n||0);
 const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const ls = {
@@ -734,7 +758,8 @@ function startEdit(h){
   renderLines(); renderPaper(); updateEditUi();
   showTab('receipt'); window.scrollTo(0,0);
 }
-function finish(print){
+async function finish(print){
+  if(savingReceipt) return;
   const msg = validateReceipt();
   $('#saveMsg').textContent = msg;
   if(msg) return;
@@ -744,17 +769,31 @@ function finish(print){
     return;
   }
   if(wasEdit && !confirm('Save changes to '+rn(editNo)+'? This overwrites the saved receipt.')) return;
-  const no = saveReceipt();
-  const goesActive = isActive(receipts.find(h=>h.no===no));
-  const after = ()=>{
-    if(wasEdit) endEdit(); else newReceipt();
-    toast(wasEdit ? rn(no)+' updated' : rn(no)+' saved to history'+(goesActive?' · added to Active Orders':''));
-  };
-  if(print){
-    const done = ()=>{ window.removeEventListener('afterprint', done); after(); };
-    window.addEventListener('afterprint', done);
-    window.print();
-  } else after();
+  savingReceipt = true;
+  try{
+    if(!wasEdit && cloudClient && cloudUser){
+      try{
+        rno = await allocateCloudReceiptNo();
+        ls.set('rno',rno);
+      }catch(err){
+        $('#saveMsg').textContent = 'Could not reserve a receipt number from the cloud, so this receipt was not saved. Check the connection and cloud setup, then try again.';
+        setCloudStatus('Could not reserve a receipt number: '+(err.message||'cloud connection error'),'error');
+        return;
+      }
+    }
+    const no = saveReceipt();
+    const goesActive = isActive(receipts.find(h=>h.no===no));
+    const after = ()=>{
+      if(wasEdit) endEdit(); else newReceipt();
+      const cloudNote = !cloudConfigured ? ' · cloud sync not configured' : (!cloudUser ? ' · device only (sign in to sync)' : '');
+      toast(wasEdit ? rn(no)+' updated'+cloudNote : rn(no)+' saved to history'+(goesActive?' · added to Active Orders':'')+cloudNote);
+    };
+    if(print){
+      const done = ()=>{ window.removeEventListener('afterprint', done); after(); };
+      window.addEventListener('afterprint', done);
+      window.print();
+    } else after();
+  }finally{ savingReceipt = false; }
 }
 $('#saveOnly').onclick = ()=>finish(false);
 $('#savePrint').onclick = ()=>finish(true);
@@ -823,6 +862,208 @@ ls.set('receipts', receipts);
 let unlocked = false;
 let hAll = false, hCustom = false;   // history day filter: all days / custom date picked
 
+function setCloudStatus(message, kind=''){
+  const el = $('#cloudStatus');
+  if(el){
+    el.textContent = message;
+    el.style.color = kind==='error' ? 'var(--bad)' : kind==='ok' ? 'var(--ok)' : 'var(--muted)';
+  }
+  const login = $('#cloudLogin'), logout = $('#cloudLogout'), fields = $('#cloudAuthFields');
+  if(login) login.classList.toggle('hide', !!cloudUser);
+  if(logout) logout.classList.toggle('hide', !cloudUser);
+  if(fields) fields.classList.toggle('hide', !!cloudUser);
+}
+function receiptSyncRow(no, data, userId=cloudUser && cloudUser.id){
+  return {user_id:userId, receipt_no:Number(no), data, updated_at:new Date().toISOString()};
+}
+function cloudPendingKey(userId){ return 'ferro_pending_receipts_'+userId; }
+function rememberPendingCloudRow(userId,no,data){
+  const key = cloudPendingKey(userId), pending = ls.get(key,{});
+  pending[String(no)] = {no:Number(no),data};
+  ls.set(key,pending);
+}
+function clearPendingCloudRow(userId,no,data){
+  const key = cloudPendingKey(userId), pending = ls.get(key,{}), current = pending[String(no)];
+  if(current && JSON.stringify(current.data)===JSON.stringify(data)) delete pending[String(no)];
+  ls.set(key,pending);
+}
+async function uploadCloudRow(no,data){
+  if(!cloudClient || !cloudUser) return false;
+  const userId = cloudUser.id;
+  rememberPendingCloudRow(userId,no,data);
+  try{
+    const {error} = await cloudClient.from('ferro_receipts').upsert(receiptSyncRow(no,data,userId),{onConflict:'user_id,receipt_no'});
+    if(error) throw error;
+    clearPendingCloudRow(userId,no,data);
+    setCloudStatus('Connected as '+(cloudUser && cloudUser.id===userId ? cloudUser.email : 'your account')+' · receipt '+rn(no)+' synced to the cloud.','ok');
+    return true;
+  }catch(err){
+    setCloudStatus('Saved on this device, but cloud sync failed: '+(err.message||'connection error')+'. The change is queued and will retry when connected.','error');
+    toast('Saved locally, but cloud sync failed.');
+    return false;
+  }
+}
+async function fetchCloudReceiptRows(){
+  const {data,error} = await cloudClient.from('ferro_receipts').select('receipt_no,data').order('receipt_no',{ascending:true});
+  if(error) throw error;
+  return data || [];
+}
+async function pushCloudRows(rows){
+  if(!rows.length) return;
+  const userId = cloudUser.id;
+  const payload = rows.map(r=>receiptSyncRow(r.no,r.data,userId));
+  const {error} = await cloudClient.from('ferro_receipts').upsert(payload,{onConflict:'user_id,receipt_no'});
+  if(error) throw error;
+}
+function queueCloudReceipt(h){
+  if(!cloudClient || !cloudUser || !h) return;
+  uploadCloudRow(h.no,h);
+}
+function queueCloudTombstone(no){
+  if(!cloudClient || !cloudUser) return;
+  const data = {_deleted:true,no:Number(no),deletedAt:new Date().toISOString()};
+  uploadCloudRow(no,data);
+}
+function persistReceiptMutation(h=null, deletedNo=null){
+  ls.set('receipts',receipts);
+  if(deletedNo!==null) queueCloudTombstone(deletedNo);
+  else if(h) queueCloudReceipt(h);
+}
+async function allocateCloudReceiptNo(){
+  if(!cloudClient || !cloudUser) return null;
+  const {data,error} = await cloudClient.rpc('ferro_next_receipt_no');
+  if(error) throw error;
+  const n = Number(data);
+  if(!Number.isSafeInteger(n) || n<1) throw new Error('The cloud did not return a valid receipt number.');
+  return n;
+}
+function receiptContentSignature(h){
+  const keys = ['date','customer','addr','items','sub','disc','total','cash','notes','mode','when','dAddr','pin','dist'];
+  const core = {};
+  keys.forEach(k=>core[k] = h[k]===undefined ? null : h[k]);
+  return JSON.stringify(core);
+}
+async function syncCloudReceipts(isInitial=false){
+  if(!cloudClient || !cloudUser || cloudSyncBusy) return;
+  cloudSyncBusy = true;
+  try{
+    let local = receipts.slice();
+    const userId = cloudUser.id;
+    /* Retry any receipt edits/deletions that previously failed while offline. */
+    const pendingKey = cloudPendingKey(userId), pending = ls.get(pendingKey,{});
+    const pendingRows = Object.values(pending);
+    if(pendingRows.length){
+      const payload = pendingRows.map(r=>receiptSyncRow(r.no,r.data,userId));
+      const {error} = await cloudClient.from('ferro_receipts').upsert(payload,{onConflict:'user_id,receipt_no'});
+      if(error) throw error;
+      pendingRows.forEach(r=>clearPendingCloudRow(userId,r.no,r.data));
+    }
+    let rows = await fetchCloudReceiptRows();
+    let byNo = new Map(rows.map(r=>[Number(r.receipt_no),r]));
+    const previouslyConnected = ls.get('ferro_cloud_user','') === cloudUser.id;
+
+    /* On a device's first connection, preserve different local receipts that reuse
+       a number already present in the cloud by allocating a new shared number. */
+    if(!previouslyConnected){
+      const adjusted = [];
+      const localNumbers = new Set(local.map(h=>Number(h.no)));
+      for(const h of local){
+        const remote = byNo.get(Number(h.no));
+        if(remote && !(remote.data && remote.data._deleted) &&
+           receiptContentSignature(remote.data) !== receiptContentSignature(h)){
+          let newNo = await allocateCloudReceiptNo();
+          while(localNumbers.has(newNo)) newNo = await allocateCloudReceiptNo();
+          localNumbers.add(newNo);
+          adjusted.push({...h,no:newNo,syncConflictOf:Number(h.no)});
+        } else adjusted.push(h);
+      }
+      local = adjusted;
+      receipts = local;
+    }
+
+    /* Import device-only history without overwriting existing cloud records. */
+    const missing = local.filter(h=>!byNo.has(Number(h.no))).map(h=>({no:h.no,data:h}));
+    if(missing.length){
+      await pushCloudRows(missing);
+      rows = await fetchCloudReceiptRows();
+      byNo = new Map(rows.map(r=>[Number(r.receipt_no),r]));
+    }
+
+    const merged = [];
+    for(const row of rows){
+      if(row.data && row.data._deleted) continue;
+      if(row.data && typeof row.data==='object') merged.push(row.data);
+    }
+    /* Keep local-only data if a cloud upload failed or the server has no row yet. */
+    for(const h of local){ if(!byNo.has(Number(h.no))) merged.push(h); }
+    const unique = new Map();
+    merged.forEach(h=>unique.set(Number(h.no),h));
+    receipts = [...unique.values()].sort((a,b)=>Number(a.no)-Number(b.no));
+    ls.set('receipts',receipts);
+    rno = Math.max(Number(rno)||1, receipts.reduce((m,h)=>Math.max(m,Number(h.no)||0),0)+1);
+    ls.set('rno',rno);
+    ls.set('ferro_cloud_user',cloudUser.id);
+    updateActiveBadge();
+    renderActive();
+    if(unlocked) renderHistory();
+    setCloudStatus('Connected as '+cloudUser.email+' · '+receipts.length+' receipt(s) synced. Other open devices refresh about every 15 seconds.','ok');
+  }catch(err){
+    setCloudStatus('Cloud sync error: '+(err.message||'unknown error')+'. Your current local copy has been kept.','error');
+  }finally{
+    cloudSyncBusy = false;
+  }
+}
+function startCloudPolling(){
+  if(cloudPollTimer) clearInterval(cloudPollTimer);
+  cloudPollTimer = setInterval(()=>syncCloudReceipts(false),15000);
+}
+async function initCloudSync(){
+  if(!cloudConfigured){
+    setCloudStatus('Cloud sync is not configured yet. Add your Supabase URL and anon/publishable key in this file, then run SUPABASE_SETUP.sql. Receipts currently stay on this device.','error');
+    $('#cloudLogin').disabled = true;
+    return;
+  }
+  $('#cloudLogin').disabled = false;
+  cloudClient.auth.onAuthStateChange((event,session)=>{
+    cloudUser = session && session.user ? session.user : null;
+    if(event==='SIGNED_OUT'){
+      if(cloudPollTimer) clearInterval(cloudPollTimer);
+      cloudPollTimer = null;
+      setCloudStatus('Signed out. Receipts on this device remain available, but syncing is paused.');
+    }
+  });
+  const {data,error} = await cloudClient.auth.getSession();
+  if(error){ setCloudStatus('Could not check cloud login: '+error.message,'error'); return; }
+  cloudUser = data.session ? data.session.user : null;
+  if(cloudUser){ await syncCloudReceipts(true); startCloudPolling(); }
+  else setCloudStatus('Not signed in. Sign in with the same cloud account on each device to enable receipt syncing.');
+}
+$('#cloudLogin').onclick = async ()=>{
+  if(!cloudClient){ setCloudStatus('Cloud sync is not configured. Follow SUPABASE_SETUP.md first.','error'); return; }
+  const email = $('#cloudEmail').value.trim(), password = $('#cloudPassword').value;
+  if(!email || !password){ setCloudStatus('Enter the cloud account email and password.','error'); return; }
+  $('#cloudLogin').disabled = true;
+  try{
+    const {data,error} = await cloudClient.auth.signInWithPassword({email,password});
+    if(error) throw error;
+    cloudUser = data.user;
+    $('#cloudPassword').value = '';
+    await syncCloudReceipts(true);
+    startCloudPolling();
+  }catch(err){ setCloudStatus('Cloud sign-in failed: '+(err.message||'unknown error'),'error'); }
+  finally{ $('#cloudLogin').disabled = false; }
+};
+$('#cloudLogout').onclick = async ()=>{
+  if(!cloudClient) return;
+  const {error} = await cloudClient.auth.signOut();
+  if(error){ setCloudStatus('Sign-out failed: '+error.message,'error'); return; }
+  cloudUser = null;
+  if(cloudPollTimer) clearInterval(cloudPollTimer);
+  cloudPollTimer = null;
+  setCloudStatus('Signed out. Receipts on this device remain available, but syncing is paused.');
+};
+window.addEventListener('online',()=>{ if(cloudUser) syncCloudReceipts(false); });
+
 const isActive = h => h.status==='active' && !h.refunded;
 const doneWord = h => (h.mode==='delivery' ? 'Delivered' : 'Picked up');
 const statusText = h => h.refunded ? 'Refunded' : (h.status==='active' ? 'Active' : doneWord(h));
@@ -847,7 +1088,7 @@ function saveReceipt(){
   }
   if(old && old.excluded){ rec.excluded = true; rec.excludedAt = old.excludedAt||''; }   // keep the "excluded from sales" flag
   if(idx>=0) receipts[idx] = rec; else receipts.push(rec);
-  ls.set('receipts', receipts);
+  persistReceiptMutation(rec);
   updateActiveBadge();
   return no;
 }
@@ -892,7 +1133,7 @@ $('#alist').addEventListener('click', e=>{
   const h = receipts.find(x=>x.no===+b.dataset.done); if(!h) return;
   if(!confirm('Mark '+rn(h.no)+' as '+doneWord(h).toLowerCase()+'?')) return;
   h.status = 'done'; h.doneAt = new Date().toISOString();
-  ls.set('receipts', receipts);
+  persistReceiptMutation(h);
   updateActiveBadge(); renderActive();
   toast(rn(h.no)+' marked as '+doneWord(h).toLowerCase());
 });
@@ -973,7 +1214,7 @@ $('#hlist').addEventListener('click', e=>{
     const h = find(b.dataset.refund); if(!h) return;
     if(!confirm('Refund '+rn(h.no)+' ('+peso(h.total)+') for '+h.customer+'?\n\nIt will be removed from sales and income, and from Active Orders if it is still there. This cannot be undone.')) return;
     h.refunded = true; h.refundedAt = new Date().toISOString();
-    ls.set('receipts', receipts);
+    persistReceiptMutation(h);
     updateActiveBadge(); renderHistory();
     toast(rn(h.no)+' refunded');
   } else if(b.dataset.exclude){
@@ -987,20 +1228,20 @@ $('#hlist').addEventListener('click', e=>{
       h.excluded = true; h.excludedAt = new Date().toISOString();
       toast(rn(h.no)+' excluded from sales');
     }
-    ls.set('receipts', receipts);
+    persistReceiptMutation(h);
     renderHistory();
   } else if(b.dataset.delete){
     const h = find(b.dataset.delete); if(!h) return;
     if(!confirm('Permanently delete '+rn(h.no)+' ('+h.customer+', '+peso(h.total)+')?\n\nIt will be removed from history, sales, income and Active Orders. This cannot be undone.\n\nTip: if you only want it out of the sales count, use “Exclude from sales” instead.')) return;
     receipts = receipts.filter(x=>x.no!==h.no);
-    ls.set('receipts', receipts);
+    persistReceiptMutation(null,h.no);
     updateActiveBadge(); renderHistory();
     toast(rn(h.no)+' deleted');
   } else if(b.dataset.reopen){
     const h = find(b.dataset.reopen); if(!h) return;
     if(!confirm('Move '+rn(h.no)+' back to Active Orders?')) return;
     h.status = 'active'; h.doneAt = '';
-    ls.set('receipts', receipts);
+    persistReceiptMutation(h);
     updateActiveBadge(); renderHistory();
     toast(rn(h.no)+' moved back to Active Orders');
   }
@@ -1033,6 +1274,7 @@ $('#dt').value = toLocalInput(new Date()); updateDtHint();
 $('#hday').value = todayKey();
 updateActiveBadge();
 renderLines(); renderPaper();
+initCloudSync();
 </script>
 </body>
 </html>
