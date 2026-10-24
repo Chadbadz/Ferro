@@ -1,526 +1,324 @@
-const CATS = ["Ceiling (Kisame)","Electrical & Wire","Fasteners","Hinges & Gate Hardware","Others","Paint & Chemicals","Plumbing","Rebar & Mesh","Roofing & Sheets","Steel Bars & Sections","Tools & Abrasives","Welding"];
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ferro POS – Receipts & Product Finder</title>
+<style>
+:root{--bg:#f3f1ec;--surface:#fff;--ink:#1c2430;--muted:#667082;--line:#d9d5cc;--accent:#d4540a;--on-accent:#fff;--chip:#e9e5dc;--ok:#2b7a4b;--bad:#b3261e;box-sizing:border-box}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12161d;--surface:#1b212b;--ink:#e8eaee;--muted:#98a1b0;--line:#313a48;--accent:#ff7a30;--on-accent:#1a1006;--chip:#252d39;--ok:#5cc489;--bad:#ff8a80}}
+:root[data-theme="dark"]{--bg:#12161d;--surface:#1b212b;--ink:#e8eaee;--muted:#98a1b0;--line:#313a48;--accent:#ff7a30;--on-accent:#1a1006;--chip:#252d39;--ok:#5cc489;--bad:#ff8a80}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 18px;background:var(--surface);border-bottom:1px solid var(--line)}
+h1{font-size:17px;margin:0;letter-spacing:.04em;text-transform:uppercase}
+h1 span{color:var(--accent)}
+nav{display:flex;gap:6px;margin-left:auto}
+nav button{padding:8px 16px;border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:8px;font:inherit;font-weight:600;cursor:pointer}
+nav button[aria-selected="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+main{max-width:1180px;margin:0 auto;padding:18px}
+.grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 12px}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
+input,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+input:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.row{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.btn{padding:9px 14px;border:1px solid var(--line);border-radius:8px;background:var(--chip);color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.sm{padding:5px 9px;font-size:13px}
+.results{border:1px solid var(--line);border-radius:8px;margin-top:6px;max-height:280px;overflow:auto;background:var(--surface)}
+.res{display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border-bottom:1px solid var(--line);cursor:pointer}
+.res:hover{background:var(--chip)}
+.res:last-child{border:0}
+.muted{color:var(--muted);font-size:13px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{font-size:12px;text-align:left;color:var(--muted);font-weight:600;padding:6px 6px;border-bottom:1px solid var(--line)}
+td{padding:6px;border-bottom:1px solid var(--line);vertical-align:middle}
+td input{padding:6px 7px}
+.num{text-align:right;white-space:nowrap}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.chip{padding:5px 11px;border-radius:99px;border:1px solid var(--line);background:var(--chip);color:var(--ink);font:inherit;font-size:13px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.badge{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;background:var(--chip);color:var(--muted);margin-left:6px}
+.badge.bad{color:var(--bad)}
+.loc{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.loc.def{font-weight:500;color:var(--muted)}
+.paper{background:#fff;color:#111;border:1px solid var(--line);border-radius:6px;padding:20px 18px;font:13px/1.5 "Courier New",ui-monospace,monospace;max-width:400px;margin:0 auto;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+.paper h3{margin:0;text-align:center;font-size:16px;letter-spacing:.05em}
+.paper .c{text-align:center}
+.paper hr{border:0;border-top:1px dashed #777;margin:9px 0}
+.paper .ln{display:flex;justify-content:space-between;gap:8px}
+.paper .it{margin-bottom:5px}
+.hide{display:none}
+details summary{cursor:pointer;font-weight:600}
+@media print{
+  header,.noprint,.card:not(.printable){display:none!important}
+  body{background:#fff}
+  main{padding:0;max-width:none}
+  .grid{display:block}
+  .card.printable{border:0;padding:0;margin:0;background:#fff}
+  .paper{border:0;box-shadow:none;max-width:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Ferro <span>POS</span></h1>
+  <nav role="tablist">
+    <button role="tab" id="tab-receipt" aria-selected="true">Make Receipt</button>
+    <button role="tab" id="tab-finder" aria-selected="false">Find Product</button>
+  </nav>
+</header>
+<main>
 
-const ROWS = [
-["Metal Furring .4","",90.0,0,1],
-["Metal Stud","",88.0,0,1],
-["Wall Angle .4","",43.0,0,1],
-["1 Gang 1 Way Switch Set","",85.0,1,1],
-["1 Gang Universal outlet set Set","",85.0,1,1],
-["2 Gang 1 Way Switch Set","",130.0,1,1],
-["2 Gang Universal outlet set Set","",130.0,1,1],
-["3 Gang 1 Way Switch Set","",180.0,1,1],
-["3 Gang Universal outlet set Set","",180.0,1,1],
-["Cable Tie 4 x 100mm","",55.0,1,1],
-["Cable Tie 4 x 150mm","",68.0,1,1],
-["Cable Tie 4 x 200mm","",90.0,1,1],
-["Celing Receptor 2 1/4","",32.0,1,1],
-["Celing Receptor 3 1/2","",40.0,1,1],
-["Electrical Tape","",46.0,1,1],
-["Entrance Cap 1/2","",41.0,1,1],
-["Entrance Cap 3/4","",52.0,1,1],
-["Flexible Hose 1/2 Orange","roll",450.0,1,1],
-["GI Wire #16 (35kgs)","",3010.0,1,1],
-["Junction Box","",28.0,1,1],
-["Nylon (Tansi) 0.8","tali",50.0,1,1],
-["Nylon (Tansi) 0.9","tali",50.0,1,1],
-["UTILITY Box","",28.0,1,1],
-["Adaptor T-Screw","",55.0,2,1],
-["Anchor Bolt (12\" x 12mm)","",200.0,2,1],
-["Anchor Bolt (12\" x 16mm)","",237.0,2,1],
-["Anchor Bolt (12\" x 20mm)","",315.0,2,1],
-["Anchor Bolt (12\" x 25mm)","",394.0,2,1],
-["Anchor Bolt (16\" x 16mm)","",255.0,2,1],
-["Anchor Bolt (16\" x 20mm)","",340.0,2,1],
-["Anchor Bolt (16\" x 25mm)","",484.0,2,1],
-["Anchor Bolt (24\" x 16mm)","",323.0,2,1],
-["Anchor Bolt (24\" x 20mm)","",409.0,2,1],
-["Anchor Bolt (24\" x 25mm)","",580.0,2,1],
-["Black Screw 1 1/2\" (Metal)","pack",65.0,2,1],
-["Black Screw 1 1/2\" (Metal)","box",320.0,2,1],
-["Black Screw 1 1/2\" (Wood)","pack",65.0,2,1],
-["Black Screw 1 1/2\" (Wood)","box",320.0,2,1],
-["Black Screw 1\" (Metal)","pack",65.0,2,1],
-["Black Screw 1\" (Metal)","box",320.0,2,1],
-["Black Screw 1\" (Wood)","pack",65.0,2,1],
-["Black Screw 1\" (Wood)","box",320.0,2,1],
-["Black Screw 2\" (Wood)","pack",85.0,2,1],
-["Black Screw 2\" (Wood)","box",320.0,2,1],
-["Bolts & Nuts 4\"","",35.0,2,1],
-["Bushing","",20.0,2,1],
-["Dyna Bolt 1/2","",45.0,2,1],
-["Dyna Bolt 1/4","",15.0,2,1],
-["Dyna Bolt 3/8","",40.0,2,1],
-["Dyna Bolt 5/16","",30.0,2,1],
-["Expansion bolt 3/8","",45.0,2,1],
-["Expansion bolt 5/16","",25.0,2,1],
-["Hardiflex Screw 1\"","pc",1.0,2,1],
-["Hardiflex Screw 1\"","box",850.0,2,1],
-["Hardiflex Screw 3/4\"","pc",0.5,2,1],
-["Hardiflex Screw 3/4\"","box",400.0,2,1],
-["Rivets 1/8 x 1/2","box",150.0,2,1],
-["Rivets 1/8 x 1/2","pack",50.0,2,1],
-["Rivets 1/8 x 3/4","box",155.0,2,1],
-["Rivets 1/8 x 3/4","pack",55.0,2,1],
-["Rivets 5/32 x 1/2","box",170.0,2,1],
-["Rivets 5/32 x 1/2","pack",65.0,2,1],
-["Rivets 5/32 x 3/4","box",180.0,2,1],
-["Rivets 5/32 x 3/4","pack",80.0,2,1],
-["Scaffolding","",2450.0,2,1],
-["Scaffolding platform","",1500.0,2,1],
-["Special Nail 1 1/2 inches","pack",55.0,2,1],
-["Special Nail 1 inch","pack",55.0,2,1],
-["Special Nail 2 inches","pack",55.0,2,1],
-["TexScrew 1 3/4\"","pack",130.0,2,1],
-["TexScrew 1 3/4\"","pc",1.5,2,1],
-["TexScrew 1 3/4\"","box",370.0,2,1],
-["TexScrew 1\"","pack",100.0,2,1],
-["TexScrew 1\"","pc",1.25,2,1],
-["TexScrew 1\"","box",410.0,2,1],
-["TexScrew 2 1/2\"","pack",190.0,2,1],
-["TexScrew 2 1/2\"","pc",2.0,2,1],
-["TexScrew 2 1/2\"","box",390.0,2,1],
-["TexScrew 2\"","pack",150.0,2,1],
-["TexScrew 2\"","pc",1.75,2,1],
-["TexScrew 2\"","box",390.0,2,1],
-["Tox Screw 10mm","pc",1.5,2,1],
-["Tox Screw 6mm","pc",0.5,2,1],
-["Tox Screw 8mm","pc",1.0,2,1],
-["Barrel Bolt LARGE - (ORANGE)","",700.0,3,1],
-["Barrel Bolt MEDIUM - (ORANGE)","",588.0,3,1],
-["Barrel Bolt SMALL - (ORANGE)","",425.0,3,1],
-["Barrel Bolt Xlarge - (ORANGE)","",900.0,3,1],
-["Barrel Bolt XSMALL - (ORANGE)","",313.0,3,1],
-["Cylindrical Hinges 1/2\"","",30.0,3,1],
-["Cylindrical Hinges 3/4\"","",50.0,3,1],
-["Cylindrical Hinges 3/8\"","",25.0,3,1],
-["Cylindrical Hinges 5/8\"","",40.0,3,1],
-["DAIKEN Door Hanger Set","",660.0,3,1],
-["Dormer Door Hinge 3 1/2 x 3 1/2","pck",70.0,3,1],
-["Flat Bar Hinge","",250.0,3,1],
-["Foot lock (L)","",300.0,3,1],
-["Foot lock (L)","",250.0,3,1],
-["Foot lock LARGE - ORANGE Medium","",325.0,3,1],
-["Foot lock Medium - ORANGE small","",288.0,3,1],
-["Foot lock Small - ORANGE Xsmall","",250.0,3,1],
-["Handle only","",23.0,3,1],
-["L brackets","",330.0,3,1],
-["Nylon Roller (upper) Guide 30x40 (2 roller, 1 bracket)","",420.0,3,1],
-["Nylon Roller (upper) Guide 40x60 (2 roller, 1 bracket)","",620.0,3,1],
-["Nylon Roller (upper) Guide 50x100 (2 roller, 1 bracket) BIG","",890.0,3,1],
-["Pillow Block #12 204 3/4\" (ULA)","",182.0,3,1],
-["Pillow Block #16 205 1\" (ULA)","",205.0,3,1],
-["Pillow Block #18 206 1 1/8\"","",275.0,3,1],
-["Pillow Block #20 207 1 1/4\"","",370.0,3,1],
-["Pillow Block #20 208 1 1/2\"","",440.0,3,1],
-["Pipe Hinge 1 1/2","",360.0,3,1],
-["Pointed Arrow","",5.0,3,1],
-["Roller (upper) Sliding gate L","",370.0,3,1],
-["Spring (Side Car) S","",350.0,3,1],
-["Tubular Hinge 2x2 ORANGE","",350.0,3,1],
-["Tubular Hinge 2x3","",400.0,3,1],
-["Tubular Hinge 2x3 ORANGE","",470.0,3,1],
-["Tubular Hinge 2x4","",550.0,3,1],
-["V type Gate Roller (lower) Sliding gate L","",650.0,3,1],
-["V type Gate Roller (lower) Sliding gate M","",540.0,3,1],
-["V type Gate Roller 32mm - (lower) Sliding gate XS","",125.0,3,1],
-["V type Gate Roller 50mm - (lower) Sliding gate XS","",210.0,3,1],
-["V type Gate Roller 60mm - (lower) Sliding gate S","",235.0,3,1],
-["V type Roller with Swivel 32mm","",430.0,3,1],
-["V type Roller with Swivel 50mm","",460.0,3,1],
-["V type Roller with swivel 60mm","",546.0,3,1],
-["V type Roller with swivel 70mm","",663.0,3,1],
-["Welya (side car) L","",630.0,3,1],
-["Welya (side car) M","",530.0,3,1],
-["Welya (side car) S","",430.0,3,1],
-["Window Handle Left","",25.0,3,1],
-["Window Handle Right","",25.0,3,1],
-["Window Hinges Left","",10.0,3,1],
-["Window Hinges Right","",10.0,3,1],
-["(3/16 Std) 4mm x 1","",292.0,4,1],
-["1\" (25mm) pink","",1327.0,4,0],
-["1/2\" (12mm) gray","",237.0,4,1],
-["1/2\" (12mm) Std. Blue","",310.0,4,1],
-["1/2\" (12mm) Std. Red","",300.0,4,1],
-["10mm Double","",2800.0,4,1],
-["10mm Single","",2200.0,4,1],
-["3/4\" (16mm) Std.","",655.0,4,0],
-["3/8\" (10mm) white","",190.0,4,1],
-["5mm Double","",1950.0,4,1],
-["5mm Single","",1480.0,4,1],
-["Ball Valve 1/2 Brass","",205.0,4,1],
-["Metal Trucks","",88.0,4,1],
-["Orange P-Trap 2\"","",90.0,4,1],
-["Wall Clip","",5.0,4,1],
-["WOOD GRAIN 0.4mm (4x 8ft)","",725.0,4,1],
-["Wood Grain Metal Cladding","",89.92,4,1],
-["Baby Roller Set","",53.0,5,1],
-["DAVIES Red Oxide (Gallon)","",580.0,5,1],
-["Elastoseal 84g","",85.0,5,1],
-["Epoxy Primer Gray (Gallon)","",1058.0,5,1],
-["Epoxy Primer Gray (Liter)","",316.0,5,1],
-["Lacquer Thinner (bottle)","",52.0,5,1],
-["Lacquer Thinner (Gallon)","",403.0,5,1],
-["Metal Primer Gray (Gallon)","",702.0,5,1],
-["Metal Primer Gray (Liters)","",201.0,5,1],
-["Paint Brush 1 1/2\"","",40.0,5,1],
-["Paint Brush 1\"","",30.0,5,1],
-["Paint Brush 2\"","",45.0,5,1],
-["Paint Brush 3\"","",75.0,5,1],
-["Paint Brush 4\"","",115.0,5,1],
-["Paint Thinner (bottle)","",78.0,5,1],
-["Paint Thinner (gallon)","",426.0,5,1],
-["Polituff body filler","",280.0,5,1],
-["Red Oxide (Gallon)","",645.0,5,1],
-["Red Oxide (Liter)","",190.0,5,1],
-["Roller only","",30.0,5,1],
-["Sand Paper","",10.0,5,1],
-["Silicon Sealant (Prosil)","",236.0,5,1],
-["Stikwel ( Wood Glue)","",260.0,5,1],
-["Teflon","",13.0,5,1],
-["Vulcaseal Jr. (75ml Sachet)","",90.0,5,1],
-["Vulcaseal Jr. 1 L","",830.0,5,1],
-["Vulcaseal Jr. 1/4 L","",227.0,5,1],
-["WELCOAT Red Oxide (Gallon)","",580.0,5,1],
-["Excel Faucet Brass 1/2","",205.0,6,1],
-["Gate Valve 1/2 Brass","",305.0,6,1],
-["GI Elbow 1/2\"","",45.0,6,1],
-["GI Elbow 2\"","",320.0,6,1],
-["GI Pipe Coupling 2\" (France)","",170.0,6,1],
-["Neltex Blue Pipe 1/2","",97.0,6,1],
-["NELTEX Solvent Cement 100cc","",85.0,6,1],
-["Orange Pipe 1/2","",78.0,6,1],
-["Orange Pipe 2\"","",216.0,6,1],
-["Orange Pipe 3\"","",405.0,6,1],
-["Orange Pipe 3/4","",99.0,6,1],
-["Orange Pipe 4\"","",540.0,6,1],
-["Orange Pipe Clean Out 2\"","",30.0,6,1],
-["Orange Pipe Clean Out 3\"","",55.0,6,1],
-["Orange Pipe Clean Out 4\"","",92.0,6,1],
-["Orange Pipe ELBOW 1/2","",15.0,6,1],
-["Orange Pipe ELBOW 2\" 45deg","",30.0,6,1],
-["Orange Pipe ELBOW 2\" 90deg","",35.0,6,1],
-["Orange Pipe ELBOW 3\" 45deg","",53.0,6,1],
-["Orange Pipe ELBOW 3\" 90deg","",72.0,6,1],
-["Orange Pipe ELBOW 4\" 45deg","",112.0,6,1],
-["Orange Pipe ELBOW 4\" 90deg","",135.0,6,1],
-["Orange Pipe Tee 2\"","",48.0,6,1],
-["Orange Pipe Tee 3\"","",95.0,6,1],
-["Orange Pipe Tee 4\"","",186.0,6,1],
-["Orange Pipe Y 2X2\"","",82.0,6,1],
-["Orange Pipe Y 3X2\"","",82.0,6,1],
-["Orange Pipe Y 3X3\"","",110.0,6,1],
-["Orange Pipe Y 4X4\"","",223.0,6,1],
-["PVC BIO Blue Pipe 1/2","",80.0,6,1],
-["PVC Blue Cap 1/2","",9.0,6,1],
-["PVC Blue Coupling 1/2","",10.0,6,1],
-["PVC Blue Elbow Pipe 1/2","",13.0,6,1],
-["PVC Blue Female Connector 1/2","",15.0,6,1],
-["PVC Blue Plug 1/2","",15.0,6,1],
-["PVC Blue Tee Pipe 1/2","",18.0,6,1],
-["PVC Blue threaded elbow 1/2","",18.0,6,1],
-["PVC Blue Union Screw Socket 1/2","",50.0,6,1],
-["S- Blue PVC Solvent","",85.0,6,1],
-["Sunrise Faucet Brass 1/2","",196.0,6,1],
-["BI 6x20 #6","",2480.0,7,1],
-["BI 6x20 #8","",1495.0,7,1],
-["Deformed G33 (10mm x 6m)","",136.0,7,1],
-["Deformed G33 (10mm x 6m)","",146.0,7,1],
-["Deformed G33 (12mm x 6m)","",201.0,7,1],
-["Deformed G33 (16mm x 6m)","",359.0,7,1],
-["Deformed G33 (20mm x 6m)","",632.0,7,1],
-["Deformed G33 (8mm x 6m) 2.2","",107.0,7,1],
-["BI 4x8 #6","",520.0,8,1],
-["BI 4x8 #8","",276.0,8,1],
-["Colored Plain Sheet 0.4mm (4x 8ft)","",665.0,8,1],
-["Colored Plain Sheet 0.5mm (4x 8ft)","",795.0,8,1],
-["Colored Plain Sheet 0.6mm (4x 8ft)","",952.0,8,1],
-["Corrugated Colored Roof/ 175 Per Lm 10 ft / 3.05m","",534.0,8,1],
-["Corrugated Colored Roof/ 175 Per Lm 12 ft / 3.66m","",641.0,8,1],
-["Corrugated Colored Roof/ 175 Per Lm 8 ft / 2.44m","",425.0,8,1],
-["Flatdeck 0.46Meter Lapad 0.8 mm","",315.0,8,1],
-["Flatdeck 0.46Meter Lapad 1.0 mm","",370.0,8,1],
-["GI 4x8 #6","",575.0,8,1],
-["GI 4x8 #8","",325.0,8,1],
-["GI Corrogated Roof 10 ft","",531.0,8,1],
-["GI Corrogated Roof 12 ft","",639.0,8,1],
-["GI Corrogated Roof 8 ft","",439.0,8,1],
-["GI Sheet 0.5 mm x 4x8","",546.0,8,1],
-["GI Sheet 0.6 mm x 4x8","",588.0,8,1],
-["GI Sheet 0.7 mm x 4 x8","",713.0,8,1],
-["GI Sheet 0.8 mm x 4x8","",824.6,8,1],
-["GI Sheet 0.9 mm x 4x8","",962.43,8,1],
-["GI Sheet 1.0 mm x 4x8","",1078.0,8,1],
-["GI Sheet 1.1 mm x 4x8","",1235.0,8,1],
-["GI Sheet 1.2 mm x 4x8","",1399.0,8,1],
-["GI Sheet 1.3 mm x 4x8","",1522.0,8,1],
-["GI Sheet 1.4 mm x 4x8","",1647.0,8,1],
-["GI Sheet 1.5 mm x 4x8","",1821.28,8,1],
-["Long Span - 5 Ribs, 6 Ribs/ Corrugated 0.35mm","",69.49,8,1],
-["Long Span - 5 Ribs, 6 Ribs/ Corrugated 0.36mm","",76.2,8,1],
-["Long Span - 5 Ribs, 6 Ribs/ Corrugated 0.40mm","",81.69,8,1],
-["Long Span - 5 Ribs, 6 Ribs/ Corrugated 0.50mm","",99.06,8,1],
-["Long Span - 5 Ribs, 6 Ribs/ Corrugated 0.60mm","",117.96,8,1],
-["Mesh Wire GI 4x8(1x1)","",1200.0,8,1],
-["Ms Plate 2 mm x 4x8","",2634.0,8,1],
-["Ms Plate 2.5 mm x 4x8","",3074.73,8,0],
-["Ms Plate 3 mm x 4x8","",3593.4,8,0],
-["Ms Plate 4 mm x 4x8","",4701.0,8,0],
-["Ms Plate 5 mm x 4x8","",5876.0,8,0],
-["Ms Plate 6 mm x 4x8","",6950.0,8,0],
-["Pre-Cut Long Span Roof 10 ft / 3.05m","",818.0,8,1],
-["Pre-Cut Long Span Roof 12 ft / 3.66m","",981.0,8,1],
-["Pre-Cut Long Span Roof 8 ft / 2.44m","",654.0,8,1],
-["Tilespan - Long Span 0.40mm","",94.49,8,1],
-["Tilespan - Long Span 0.50mm","",113.69,8,1],
-["1 -1/2 x 3 x 4.1 lbs","",1965.0,9,0],
-["1 -1/2 x 3 x 5 lbs","",2255.0,9,0],
-["1 -7/8 x 6 x8.2 lbs","",4108.0,9,0],
-["1 1/2\" S20 (40mm) Local","",808.3,9,1],
-["1 1/2\" S20 (Local)","",594.0,9,1],
-["1 1/2\" S40 (40mm) Local","",1175.02,9,1],
-["1 1/4\" S20 (32mm) Local","",705.55,9,1],
-["1 1/4\" S20 (Imp)","",495.0,9,1],
-["1 1/4\" S40 (32mm) Local","",1014.79,9,1],
-["1\" S20 (25mm) Local","",512.38,9,1],
-["1\" S20 (Imp)","",396.0,9,1],
-["1\" S40 (25mm) Local","",724.85,9,1],
-["1/2\" S20 (15mm) Local","",284.27,9,1],
-["1/2\" S20 (Imp)","",215.0,9,1],
-["1/2\" S40 (15mm) Local","",375.4,9,1],
-["1/2\" S40 (Local)","",332.0,9,1],
-["2 -1/2 x 5 x 9 lbs","",4312.0,9,0],
-["2 1/2\" S20 (65mm) Local","",1712.5,9,1],
-["2 1/2\" S40 (65mm) Local","",2090.62,9,1],
-["2 x 4 x 5.4 lbs","",2588.0,9,0],
-["2 x 4 x 7.25 lbs","",3475.0,9,0],
-["2\" S20 (50mm) Local","",1116.55,9,1],
-["2\" S20 (Local)","",880.0,9,1],
-["2\" S40 (50mm) Local","",1598.49,9,1],
-["3 x 6 x 12.5 lbs","",5989.0,9,0],
-["3\" S20 (80mm) Local","",2075.55,9,1],
-["3\" S40 (80mm) Local","",2708.65,9,1],
-["3/4\" S20 (20mm) Local","",356.2,9,1],
-["3/4\" S20 (Imp)","",268.8,9,1],
-["3/4\" S40 (20mm) Local","",471.15,9,1],
-["3/4\" S40 (Local)","",411.0,9,1],
-["4\" S20 (100mm) Local","",2959.2,9,1],
-["4\" S40 (100mm) Local","",4005.75,9,1],
-["7/8\" 1\"","",65.0,9,1],
-["Angle Bars 2.5mm x 1 (Red)","",297.0,9,1],
-["Angle Bars 2.5mm x 1 1/2 (Red)","",440.0,9,1],
-["Angle Bars 2.5mm x 2 (Red)","",582.0,9,1],
-["Angle Bars 2mm x 1 (Blue)","",252.0,9,1],
-["Angle Bars 2mm x 1 1/2 (Blue)","",370.0,9,1],
-["Angle Bars 3.5mm x 1 (Green)","",383.0,9,1],
-["Angle Bars 3.5mm x 1 1/2 (Green)","",632.2,9,1],
-["Angle Bars 3.5mm x 2 (Green)","",821.23,9,1],
-["Angle Bars 3mm x 1 (Yellow)","",341.0,9,1],
-["Angle Bars 3mm x 1 1/2 (Yellow)","",550.45,9,1],
-["Angle Bars 3mm x 2 (Yellow)","",722.25,9,1],
-["Angle Bars 4.5mm x 1 1/2 (Violet)","",795.7,9,1],
-["Angle Bars 4.5mm x 2 (Violet)","",1043.25,9,1],
-["Angle Bars 4.5mm x 2 1/2 (Violet)","",1375.0,9,1],
-["Angle Bars 4.5mm x 3 (Violet)","",1683.0,9,1],
-["Angle Bars 4mm x 1 (Orange)","",435.0,9,1],
-["Angle Bars 4mm x 1 1/2 (Orange)","",713.95,9,1],
-["Angle Bars 4mm x 2 (Orange)","",936.25,9,1],
-["Angle Bars 4mm x 2 1/2 (Orange)","",1265.0,9,1],
-["Angle Bars 4mm x 3 (Orange)","",1514.7,9,1],
-["Angle Bars 5mm x 1 (White)","",535.0,9,1],
-["Angle Bars 5mm x 1 1/2 (White)","",877.45,9,1],
-["Angle Bars 5mm x 2 (White)","",1150.25,9,1],
-["Angle Bars 5mm x 2 1/2 (White)","",1540.0,9,1],
-["Angle Bars 5mm x 3 (White)","",1851.3,9,1],
-["Angle Bars 6mm x 1 1/2 (Brown)","",1035.5,9,1],
-["Angle Bars 6mm x 2 (Brown)","",1364.25,9,1],
-["Angle Bars 6mm x 2 1/2 (Brown)","",1815.0,9,1],
-["Angle Bars 6mm x 3 (Brown)","",2193.51,9,1],
-["C-Channel (0.7)","",96.0,9,1],
-["Channel Bars - Imported China 1 -1/2 x 3","",894.6,9,1],
-["Channel Bars - Imported China 1 -1/2 x 3","",1143.1,9,1],
-["Channel Bars - Imported China 1 -1/2 x 3","",1441.3,9,0],
-["Channel Bars - Imported China 2 x 4","",1143.1,9,1],
-["Channel Bars - Imported China 2 x 4","",1519.0,9,1],
-["Door Jamb 0.8mm","",1100.0,9,1],
-["Door Jamb 0.9mm","",1200.0,9,1],
-["Door Jamb 1.0mm","",1300.0,9,1],
-["Flatbar (1/4) 5mm x 1","",364.0,9,1],
-["Flatbar (1/4) 5mm x 1 -1/2 (Red)","",553.0,9,1],
-["Flatbar (1/4) 5mm x 2","",778.0,9,1],
-["Flatbar (1/4) 6mm x 1","",436.0,9,1],
-["Flatbar (1/4) 6mm x 1 -1/2","",682.0,9,1],
-["Flatbar (1/4) 6mm x 2","",874.0,9,0],
-["Flatbar (1/4) 6mm x 3","",1341.0,9,1],
-["Flatbar (1/8) 2mm x 1","",147.0,9,1],
-["Flatbar (1/8) 2mm x 1 - 1/2","",220.0,9,1],
-["Flatbar (3/16) 2mm x 2","",375.0,9,1],
-["Flatbar (3/16) 3.5mm x 1 -1/2","",387.0,9,1],
-["Flatbar (3/16) 3mm x 1 (Red)","",218.0,9,1],
-["Flatbar (3/16) 3mm x 1 - 1/2","",331.0,9,1],
-["Flatbar (3/16) 3mm x 2","",436.0,9,1],
-["Flatbar 1/4 x 1/2 (Red)","",127.0,9,1],
-["Flatbar 1/4 x 3/4 (Red)","",182.0,9,1],
-["Flatbar 1/8 x 1/2 (White)","",63.0,9,1],
-["Flatbar 1/8 x 3/4 (White)","",94.0,9,1],
-["Flatbar 10mm x 1 -1/2","",1142.0,9,0],
-["Flatbar 10mm x 2","",1595.0,9,0],
-["Flatbar 12mm x 1","",883.0,9,1],
-["Flatbar 12mm x 2","",1746.0,9,0],
-["Flatbar 3/16 x 1 -1/4","",416.0,9,0],
-["Flatbar 3/16 x 1/2 (Green)","",87.0,9,1],
-["Flatbar 3/16 x 3/4 (Green)","",121.0,9,1],
-["Flatbar 5mm x 1 -1/4","",475.0,9,0],
-["Flatbar 5mmx 3/4","",351.0,9,0],
-["Flatbar 8mm x 1","",582.0,9,1],
-["Flatbar 8mm x 1 -1/2","",887.0,9,1],
-["Flatbar 8mm x 2","",1164.0,9,1],
-["Flatbar 8mm x 3","",1746.0,9,1],
-["Ms Plate 10 mm","",11773.44,9,0],
-["Ms Plate 12 mm","",14128.13,9,0],
-["Ms Plate 16 mm","",20511.95,9,0],
-["Ms Plate 2 mm","",2459.34,9,1],
-["Ms Plate 2.5 mm","",2943.36,9,1],
-["Ms Plate 20 mm","",25639.94,9,0],
-["Ms Plate 25 mm","",32049.92,9,0],
-["Ms Plate 3 mm","",3531.53,9,1],
-["Ms Plate 4 mm","",4604.0,9,1],
-["Ms Plate 5 mm","",5886.72,9,1],
-["Ms Plate 6 mm","",7061.04,9,1],
-["Ms Plate 8 mm","",9418.75,9,1],
-["Ms Plate 9 mm","",10596.1,9,0],
-["Other Brands: GI C-Purlins (Bayan, Valiant) 2 x 3 x 1.0 mm (Violet)","",330.0,9,1],
-["Other Brands: GI C-Purlins (Bayan, Valiant) 2 x 3 x 1.2 mm (Orange)","",405.0,9,1],
-["Other Brands: GI C-Purlins (Bayan, Valiant) 2 x 3 x 1.5 mm (Black)","",496.8,9,1],
-["Other Brands: GI C-Purlins (Bayan, Valiant) 2 x 3 x 2.0 mm (Black)","",687.5,9,1],
-["Other Brands: GI C-Purlins (Bayan, Valiant) 2 x 4 x 1.2 mm (Orange)","",464.4,9,1],
-["Other Brands: GI C-Purlins (Bayan, Valiant) 2 x 4 x 1.5 mm (White)","",621.0,9,1],
-["Other Brands: GI C-Purlins (Bayan, Valiant) 2 x 6 x 1.2 mm (Orange)","",599.5,9,1],
-["Other Brands: GI C-Purlins (Bayan, Valiant) 2 x 6 x 1.5 mm (Black)","",715.0,9,1],
-["Other Brands: GI C-Purlins (Bayan, Valiant) 2 x 6 x 1.5 mm (White)","",797.5,9,1],
-["Other Brands: GI C-Purlins (Bayan, Valiant) 2 x 8 x 1.5 mm (White)","",1205.6,9,1],
-["Other Brands: Sky/ North/ Regan 1 1/2 x 1 1/2 x 1.2 mm","",349.8,9,1],
-["Other Brands: Sky/ North/ Regan 1 1/2 x 1 1/2 x 1.5 mm","",467.5,9,1],
-["Other Brands: Sky/ North/ Regan 1 x 1 x 1.2 mm","",233.2,9,1],
-["Other Brands: Sky/ North/ Regan 1 x 1 x 1.5 mm","",313.5,9,1],
-["Other Brands: Sky/ North/ Regan 1 x 2 x 1.2 mm","",349.8,9,1],
-["Other Brands: Sky/ North/ Regan 1 x 2 x 1.5 mm","",467.5,9,1],
-["Other Brands: Sky/ North/ Regan 1 x 3 x 1.2 mm","",467.5,9,1],
-["Other Brands: Sky/ North/ Regan 1 x 3 x 1.5 mm","",605.0,9,1],
-["Other Brands: Sky/ North/ Regan 2 x 2 x 1.2 mm","",467.5,9,1],
-["Other Brands: Sky/ North/ Regan 2 x 2 x 1.5 mm","",577.5,9,1],
-["Other Brands: Sky/ North/ Regan 2 x 3 x 1.2 mm","",583.0,9,1],
-["Other Brands: Sky/ North/ Regan 2 x 3 x 1.5 mm","",742.5,9,1],
-["Other Brands: Sky/ North/ Regan 2 x 4 x 1.2 mm","",698.5,9,1],
-["Other Brands: Sky/ North/ Regan 2 x 4 x 1.5 mm","",907.5,9,1],
-["Other Brands: Sky/ North/ Regan 2 x 6 x 1.2 mm","",1093.95,9,1],
-["Other Brands: Sky/ North/ Regan 2 x 6 x 1.2 mm","",1234.2,9,1],
-["Other Brands: Sky/ North/ Regan 2 x 6 x 1.5 mm","",1626.9,9,1],
-["Other Brands: Sky/ North/ Regan 2 x 6 x 2.0 mm","",1938.0,9,1],
-["Other Brands: Sky/ North/ Regan 3 x 3 x 2.0 mm","",1539.0,9,1],
-["Other Brands: Sky/ North/ Regan 3/4 x 3/4 x 1.2 mm","",177.1,9,1],
-["Other Brands: Sky/ North/ Regan 3/4 x 3/4 x 1.5 mm","",236.5,9,1],
-["Other Brands: Sky/ North/ Regan 4 x 4 x 2.0 mm","",1938.0,9,1],
-["Pentagon: GI C-Purlins 2 x 3 x 1.0 mm (Violet)","",330.0,9,1],
-["Pentagon: GI C-Purlins 2 x 3 x 1.2 mm (Orange)","",405.0,9,1],
-["Pentagon: GI C-Purlins 2 x 3 x 1.5 mm (Black)","",496.8,9,1],
-["Pentagon: GI C-Purlins 2 x 3 x 2.0 mm (Black)","",702.5,9,1],
-["Pentagon: GI C-Purlins 2 x 4 x 1.2 mm (Orange)","",464.4,9,1],
-["Pentagon: GI C-Purlins 2 x 4 x 1.5 mm (White)","",621.0,9,1],
-["Pentagon: GI C-Purlins 2 x 6 x 1.2 mm (Orange)","",612.58,9,1],
-["Pentagon: GI C-Purlins 2 x 6 x 1.5 mm (Black)","",730.6,9,1],
-["Pentagon: GI C-Purlins 2 x 6 x 1.5 mm (White)","",814.9,9,1],
-["Pentagon: GI C-Purlins 2 x 8 x 1.5 mm (White)","",1231.9,9,1],
-["Round Bar (25mm)","",1104.0,9,0],
-["Round Bar 1/2 (12mm) (Green)","",237.0,9,1],
-["Round Bar 1/4 (5mm) (Yellow)","",53.0,9,1],
-["Round Bar 1/4 (6mm) (Blue)","",70.0,9,1],
-["Round Bar 3/4 (20mm) (Blue)","",549.0,9,0],
-["Round Bar 3/8 (10mm) (Blue)","",190.0,9,1],
-["Round Bar 3/8 (9mm) (White)","",147.0,9,1],
-["Round Bar 5/16 (7mm) (Red)","",98.0,9,1],
-["Round Bar 5/16 (8mm) (Green)","",120.0,9,1],
-["Round Bar 5/8 (16mm) (Blue)","",368.0,9,1],
-["Round Bar 5/8 (16mm) (KATAY)","",415.0,9,1],
-["Shafting 1 1/2\"","",4100.0,9,1],
-["Shafting 1 1/4\"","",3212.0,9,1],
-["Shafting 1\"","",1850.0,9,1],
-["Shafting 1/2\"","",620.0,9,1],
-["Shafting 2\"","",6800.0,9,1],
-["Shafting 3/4\"","",1160.0,9,1],
-["Shafting 5/8\"","",900.0,9,1],
-["Shafting 7/8\"","",1450.0,9,1],
-["Tubular - Pentagon 1 1/2 x 1 1/2 x 1.2 mm","",356.8,9,1],
-["Tubular - Pentagon 1 1/2 x 1 1/2 x 1.5 mm","",476.85,9,1],
-["Tubular - Pentagon 1 x 1 x 1.2 mm","",246.84,9,1],
-["Tubular - Pentagon 1 x 1 x 1.5 mm","",319.77,9,1],
-["Tubular - Pentagon 1 x 2 x 1.2 mm","",356.8,9,1],
-["Tubular - Pentagon 1 x 2 x 1.5 mm","",476.85,9,1],
-["Tubular - Pentagon 1 x 3 x 1.2 mm","",504.9,9,1],
-["Tubular - Pentagon 1 x 3 x 1.5 mm","",645.15,9,1],
-["Tubular - Pentagon 2 x 2 x 1.2 mm","",510.51,9,1],
-["Tubular - Pentagon 2 x 2 x 1.5 mm","",645.15,9,1],
-["Tubular - Pentagon 2 x 2 x 2.0 mm","",991.1,9,1],
-["Tubular - Pentagon 2 x 3 x 1.2 mm","",594.66,9,1],
-["Tubular - Pentagon 2 x 3 x 1.5 mm","",795.2,9,1],
-["Tubular - Pentagon 2 x 3 x 2.0 mm","",1253.45,9,1],
-["Tubular - Pentagon 2 x 4 x 1.2 mm","",712.47,9,1],
-["Tubular - Pentagon 2 x 4 x 1.5 mm","",925.65,9,1],
-["Tubular - Pentagon 2 x 4 x 1.5 mm","",952.0,9,1],
-["Tubular - Pentagon 2 x 4 x 2.0 mm","",1282.6,9,1],
-["Tubular - Pentagon 2 x 4 x 2.0 mm","",1486.65,9,1],
-["Tubular - Pentagon 2 x 6 x 1.2 mm","",1136.85,9,1],
-["Tubular - Pentagon 2 x 6 x 1.2 mm","",1282.6,9,1],
-["Tubular - Pentagon 2 x 6 x 1.5 mm","",1690.7,9,1],
-["Tubular - Pentagon 2 x 6 x 2.0 mm","",1982.2,9,1],
-["Tubular - Pentagon 3 x 3 x 2.0 mm","",1574.1,9,1],
-["Tubular - Pentagon 3/4 x 3/4 x 1.2 mm","",180.64,9,1],
-["Tubular - Pentagon 3/4 x 3/4 x 1.5 mm","",241.23,9,1],
-["Tubular - Pentagon 4 x 4 x 2.0 mm","",1982.2,9,1],
-["Webdeck 0.97Meter Lapad 0.8 mm","",504.0,9,1],
-["Webdeck 0.97Meter Lapad 1.0 mm","",594.0,9,1],
-["Webdeck 0.97Meter Lapad 1.2mm","",694.0,9,1],
-["BULL TOTEM Measure 7.5m","",205.0,10,1],
-["BULL TOTEM Tape Measure 5m","",120.0,10,1],
-["Chalk Stone","",5.0,10,1],
-["Concrete Cutting disc","",182.0,10,1],
-["Cup Brush CRIMPED WIRE","",81.0,10,1],
-["Cup Brush TWISTED SIZE 3","",95.0,10,1],
-["Cut Off/Cutting Wheel 14\" (MAKITA)","",225.0,10,1],
-["Cut Off/Cutting Wheel 14\" (SUNRISE RED)","",180.0,10,1],
-["Cutting Disc #4 (OASIS)","",20.0,10,1],
-["Cutting Disc #4 (Sunrise)","",20.0,10,1],
-["Drill Bit 1/4","",95.0,10,1],
-["Drill Bit 1/4","",138.0,10,1],
-["Drill Bit 1/8","",37.0,10,1],
-["Drill Bit 1/8 (FIXTEC COBALT)","",69.0,10,1],
-["Drill Bit 1/8 (SUNRISE)","",45.0,10,1],
-["Drill bit 10mm Concrete","",195.0,10,1],
-["Drill Bit 3/16","",85.0,10,1],
-["Drill Bit 3/16","",77.0,10,1],
-["Drill Bit 3/8","",336.0,10,1],
-["Drill Bit 5/16","",205.0,10,1],
-["Drill Bit 5/32","",58.0,10,1],
-["Drill Bit 5/32 (Dormer)","",77.0,10,1],
-["Drill Bit 5/32 (FIXTEC COBALT)","",80.0,10,1],
-["Drill Bit 5/32 (SUNRISE)","",50.0,10,1],
-["Drill bit 6mm Concrete","",104.0,10,1],
-["Drill bit 8mm Concrete","",140.0,10,1],
-["Flap Disc","",35.0,10,1],
-["Grinding Disc","",35.0,10,1],
-["Metal Brush","",40.0,10,1],
-["Nail for Nail Gun","pc",2.5,10,1],
-["Nail for Nail Gun","box",500.0,10,1],
-["NAIL GUN","",520.0,10,1],
-["OASIS Tape Measure 5m","",110.0,10,1],
-["OASIS Tape Measure 7.5m","",182.0,10,1],
-["S - Clamp (Swivel) 1 1/2","",60.0,10,1],
-["S - Flex #18 Hacksaw Blade","",50.0,10,1],
-["S - Flex #24 Hacksaw Blade","",50.0,10,1],
-["Screw Bit","",32.0,10,1],
-["Electrode Holder","",260.0,11,1],
-["Welding Rod, 1/8 (1box x 4packs x 5kgs)","box",1670.0,11,1],
-["Welding Rod, 1/8 (1box x 4packs x 5kgs)","pack",430.0,11,1],
-["Welding Rod, 3/32 (1box x 8packs x 2.5kgs)","box",1850.0,11,1],
-["Welding Rod, 3/32 (1box x 8packs x 2.5kgs)","pack",235.0,11,1],
-["Wipweld 6013 (1/8\\)","",1850.0,11,1]
-];
+<!-- RECEIPT PAGE -->
+<section id="page-receipt" class="grid">
+  <div>
+    <div class="card">
+      <h2>Customer</h2>
+      <div class="row">
+        <div><label for="cName">Customer name</label><input id="cName" placeholder="Walk-in customer"></div>
+        <div><label for="cAddr">Address / contact (optional)</label><input id="cAddr"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Add items</h2>
+      <label for="addq">Search the price list (<span id="count"></span> items)</label>
+      <input id="addq" placeholder="e.g. welding rod, drill bit 1/4, GI sheet…" autocomplete="off">
+      <div id="addres" class="results hide"></div>
+      <details style="margin-top:12px"><summary>Add a custom item (not in list, delivery fee, etc.)</summary>
+        <div class="row" style="margin-top:10px">
+          <div><label for="xName">Description</label><input id="xName"></div>
+          <div><label for="xPrice">Price (₱)</label><input id="xPrice" type="number" min="0" step="any"></div>
+          <div><label for="xQty">Qty</label><input id="xQty" type="number" min="0" step="any" value="1"></div>
+        </div>
+        <button class="btn sm" id="xAdd" style="margin-top:10px">Add custom item</button>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2>Items on this receipt</h2>
+      <div class="scroll"><table>
+        <thead><tr><th>Item</th><th style="width:80px">Qty</th><th style="width:110px">Price</th><th class="num">Amount</th><th style="width:34px"></th></tr></thead>
+        <tbody id="lines"></tbody>
+      </table></div>
+      <p id="empty" class="muted">No items yet. Search above to add one.</p>
+      <div class="row" style="margin-top:14px">
+        <div><label for="disc">Discount (₱)</label><input id="disc" type="number" min="0" step="any" value="0"></div>
+        <div><label for="cash">Cash received (₱)</label><input id="cash" type="number" min="0" step="any"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <details><summary>Store details shown on the receipt</summary>
+        <div class="row" style="margin-top:10px">
+          <div><label for="sName">Store name</label><input id="sName"></div>
+          <div><label for="sAddr">Address</label><input id="sAddr"></div>
+          <div><label for="sTel">Contact no.</label><input id="sTel"></div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div>
+    <div class="card printable">
+      <div class="noprint" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="btn primary" id="print">Print / Save PDF</button>
+        <button class="btn" id="newr">New receipt</button>
+      </div>
+      <div class="paper" id="paper"></div>
+    </div>
+  </div>
+</section>
+
+<!-- FINDER PAGE -->
+<section id="page-finder" class="hide">
+  <div class="card">
+    <h2>Product finder</h2>
+    <input id="fq" placeholder="Search a product or a location (e.g. hinge, drill bit, Aisle 2)…" autocomplete="off">
+    <div class="chips" id="chips"></div>
+    <p class="muted" id="fcount"></p>
+    <div class="scroll"><table>
+      <thead><tr><th>Product</th><th>Category</th><th class="num">Price</th><th>Location</th><th></th></tr></thead>
+      <tbody id="fres"></tbody>
+    </table></div>
+  </div>
+  <div class="card">
+    <details><summary>Set the store layout (default location per category)</summary>
+      <p class="muted">The price list has no shelf locations, so each category starts with a placeholder zone. Type your real aisle/shelf names here. Individual products can be overridden with “Edit” in the results.</p>
+      <div class="row" id="zones"></div>
+    </details>
+  </div>
+</section>
+</main>
+
+<script src="products.js"></script>
+<script>
+const DATA = ROWS.map(r => ({n:r[0], u:r[1], p:r[2], c:CATS[r[3]], s:!!r[4]}));
+const $ = s => document.querySelector(s);
+const peso = n => new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(+n||0);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ls = {
+  get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+};
+const pkey = p => p.n+'|'+p.u;
+const label = p => p.n + (p.u ? ' ('+p.u+')' : '');
+const defaultZones = {}; CATS.forEach((c,i)=>defaultZones[c]='Zone '+(i+1)+' – '+c);
+let zones = Object.assign({}, defaultZones, ls.get('zones',{}));
+let overrides = ls.get('locs',{});
+let shop = Object.assign({name:'FERRO STEEL TRADING',addr:'',tel:''}, ls.get('shop',{}));
+let rno = ls.get('rno',1);
+let items = ls.get('draft',[]);
+let editing = null, activeCat = 'All';
+const loc = p => overrides[pkey(p)] || zones[p.c] || 'Not set';
+const search = (q, list) => {
+  const t = q.toLowerCase().split(/\s+/).filter(Boolean);
+  return list.filter(p => { const h = (label(p)+' '+p.c+' '+loc(p)).toLowerCase(); return t.every(x=>h.includes(x)); });
+};
+
+/* ---------- tabs ---------- */
+function showTab(t){
+  $('#page-receipt').classList.toggle('hide', t!=='receipt');
+  $('#page-finder').classList.toggle('hide', t!=='finder');
+  $('#tab-receipt').setAttribute('aria-selected', t==='receipt');
+  $('#tab-finder').setAttribute('aria-selected', t==='finder');
+  if(t==='finder') renderFinder();
+}
+$('#tab-receipt').onclick = ()=>showTab('receipt');
+$('#tab-finder').onclick = ()=>showTab('finder');
+
+/* ---------- receipt ---------- */
+function addItem(p){
+  const ex = items.find(i=>i.k===pkey(p));
+  if(ex) ex.qty += 1; else items.push({k:pkey(p), name:label(p), price:p.p, qty:1});
+  persist(); renderLines(); renderPaper();
+}
+function persist(){ ls.set('draft', items); }
+function renderLines(){
+  $('#empty').classList.toggle('hide', items.length>0);
+  $('#lines').innerHTML = items.map((it,i)=>`<tr>
+    <td>${esc(it.name)}</td>
+    <td><input type="number" min="0" step="any" value="${it.qty}" data-i="${i}" data-f="qty"></td>
+    <td><input type="number" min="0" step="any" value="${it.price}" data-i="${i}" data-f="price"></td>
+    <td class="num" id="amt${i}">${peso(it.qty*it.price)}</td>
+    <td><button class="btn sm" data-del="${i}" aria-label="Remove">✕</button></td></tr>`).join('');
+}
+$('#lines').addEventListener('input', e=>{
+  const i = e.target.dataset.i; if(i===undefined) return;
+  items[i][e.target.dataset.f] = parseFloat(e.target.value)||0;
+  $('#amt'+i).textContent = peso(items[i].qty*items[i].price);
+  persist(); renderPaper();
+});
+$('#lines').addEventListener('click', e=>{
+  const d = e.target.closest('[data-del]'); if(!d) return;
+  items.splice(+d.dataset.del,1); persist(); renderLines(); renderPaper();
+});
+function totals(){
+  const sub = items.reduce((a,i)=>a+i.qty*i.price,0);
+  const disc = Math.min(parseFloat($('#disc').value)||0, sub);
+  const total = sub-disc, cash = parseFloat($('#cash').value)||0;
+  return {sub,disc,total,cash,change:cash-total};
+}
+function renderPaper(){
+  const t = totals(), now = new Date();
+  const name = $('#cName').value.trim(), addr = $('#cAddr').value.trim();
+  $('#paper').innerHTML = `
+    <h3>${esc(shop.name||'STORE')}</h3>
+    <div class="c">${esc(shop.addr||'')}${shop.tel?'<br>Tel: '+esc(shop.tel):''}</div>
+    <hr>
+    <div class="ln"><span>Receipt no.</span><span>OR-${String(rno).padStart(6,'0')}</span></div>
+    <div class="ln"><span>Date</span><span>${now.toLocaleDateString('en-PH')} ${now.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'})}</span></div>
+    <div class="ln"><span>Customer</span><span>${esc(name||'Walk-in')}</span></div>
+    ${addr?`<div class="ln"><span>Address</span><span>${esc(addr)}</span></div>`:''}
+    <hr>
+    ${items.length ? items.map(i=>`<div class="it">${esc(i.name)}<div class="ln"><span>${i.qty} × ${peso(i.price)}</span><span>${peso(i.qty*i.price)}</span></div></div>`).join('') : '<div class="c">— no items —</div>'}
+    <hr>
+    <div class="ln"><span>Subtotal</span><span>${peso(t.sub)}</span></div>
+    ${t.disc?`<div class="ln"><span>Discount</span><span>-${peso(t.disc)}</span></div>`:''}
+    <div class="ln" style="font-weight:700;font-size:15px"><span>TOTAL</span><span>${peso(t.total)}</span></div>
+    ${t.cash?`<div class="ln"><span>Cash</span><span>${peso(t.cash)}</span></div><div class="ln"><span>Change</span><span>${peso(Math.max(0,t.change))}</span></div>`:''}
+    ${t.cash&&t.change<0?`<div class="ln"><span>Balance due</span><span>${peso(-t.change)}</span></div>`:''}
+    <hr>
+    <div class="c">Thank you for your purchase!</div>`;
+}
+['cName','cAddr','disc','cash'].forEach(id=>$('#'+id).addEventListener('input', renderPaper));
+[['sName','name'],['sAddr','addr'],['sTel','tel']].forEach(([id,k])=>{
+  $('#'+id).value = shop[k]||'';
+  $('#'+id).addEventListener('input', ()=>{shop[k]=$('#'+id).value; ls.set('shop',shop); renderPaper();});
+});
+$('#count').textContent = DATA.length;
+const addq = $('#addq'), addres = $('#addres');
+function showAddResults(){
+  const q = addq.value.trim();
+  if(!q){addres.classList.add('hide');return;}
+  const r = search(q, DATA).slice(0,12);
+  addres.classList.remove('hide');
+  addres.innerHTML = r.length ? r.map(p=>`<div class="res" data-k="${esc(pkey(p))}"><span>${esc(label(p))}${p.s?'':'<span class="badge bad">no stock</span>'}</span><b>${peso(p.p)}</b></div>`).join('') : '<div class="res muted">No match. Use “custom item” below.</div>';
+}
+addq.addEventListener('input', showAddResults);
+addq.addEventListener('keydown', e=>{ if(e.key==='Enter'){ const r=search(addq.value,DATA)[0]; if(r){addItem(r); addq.value=''; showAddResults();} }});
+addres.addEventListener('click', e=>{
+  const r = e.target.closest('.res[data-k]'); if(!r) return;
+  addItem(DATA.find(p=>pkey(p)===r.dataset.k)); addq.value=''; showAddResults(); addq.focus();
+});
+$('#xAdd').onclick = ()=>{
+  const n = $('#xName').value.trim(); if(!n) return;
+  items.push({k:'custom|'+Date.now(), name:n, price:parseFloat($('#xPrice').value)||0, qty:parseFloat($('#xQty').value)||1});
+  $('#xName').value=''; $('#xPrice').value=''; $('#xQty').value=1;
+  persist(); renderLines(); renderPaper();
+};
+$('#print').onclick = ()=>window.print();
+$('#newr').onclick = ()=>{
+  rno++; ls.set('rno',rno); items=[]; persist();
+  ['cName','cAddr','cash'].forEach(id=>$('#'+id).value=''); $('#disc').value=0;
+  renderLines(); renderPaper();
+};
+
+/* ---------- finder ---------- */
+function renderChips(){
+  $('#chips').innerHTML = ['All',...CATS].map(c=>`<button class="chip" aria-pressed="${c===activeCat}" data-c="${esc(c)}">${esc(c)}</button>`).join('');
+}
+$('#chips').addEventListener('click', e=>{ const b=e.target.closest('[data-c]'); if(!b) return; activeCat=b.dataset.c; renderFinder(); });
+function renderFinder(){
+  renderChips();
+  let list = DATA.filter(p=>activeCat==='All'||p.c===activeCat);
+  list = search($('#fq').value, list);
+  $('#fcount').textContent = list.length+' product'+(list.length===1?'':'s')+(list.length>150?' (showing first 150, refine your search)':'');
+  $('#fres').innerHTML = list.slice(0,150).map(p=>{
+    const k = pkey(p), custom = !!overrides[k];
+    const locCell = editing===k
+      ? `<input id="locIn" value="${esc(overrides[k]||'')}" placeholder="${esc(zones[p.c]||'')}" style="min-width:150px"> <button class="btn sm primary" data-save="${esc(k)}">Save</button>`
+      : `<span class="loc ${custom?'':'def'}">📍 ${esc(loc(p))}</span>${custom?'':'<span class="badge">category default</span>'}`;
+    return `<tr><td>${esc(label(p))}${p.s?'':'<span class="badge bad">no stock</span>'}</td><td class="muted">${esc(p.c)}</td><td class="num">${peso(p.p)}</td><td>${locCell}</td>
+      <td class="num"><button class="btn sm" data-edit="${esc(k)}">Edit</button> <button class="btn sm" data-add="${esc(k)}">+ Receipt</button></td></tr>`;
+  }).join('');
+  const li = $('#locIn'); if(li) li.focus();
+}
+$('#fq').addEventListener('input', ()=>{editing=null; renderFinder();});
+$('#fres').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  if(b.dataset.edit){ editing=b.dataset.edit; renderFinder(); }
+  else if(b.dataset.save){
+    const v = $('#locIn').value.trim();
+    if(v) overrides[b.dataset.save]=v; else delete overrides[b.dataset.save];
+    ls.set('locs',overrides); editing=null; renderFinder();
+  } else if(b.dataset.add){
+    addItem(DATA.find(p=>pkey(p)===b.dataset.add)); b.textContent='Added ✓';
+  }
+});
+$('#fres').addEventListener('keydown', e=>{ if(e.key==='Enter'&&e.target.id==='locIn') document.querySelector('[data-save]').click(); });
+$('#zones').innerHTML = CATS.map((c,i)=>`<div><label for="z${i}">${esc(c)}</label><input id="z${i}" value="${esc(zones[c]||'')}"></div>`).join('');
+$('#zones').addEventListener('input', e=>{
+  const i = +e.target.id.slice(1); zones[CATS[i]] = e.target.value; ls.set('zones',zones);
+});
+$('#zones').addEventListener('change', renderFinder);
+
+renderLines(); renderPaper();
+</script>
+</body>
+</html>
